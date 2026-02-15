@@ -28,6 +28,7 @@ const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 
 
 const OFFICIAL_API_BASE_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api";
 const OFFICIAL_API_HOME_URL = `${OFFICIAL_API_BASE_URL}/home/ultimos-resultados`;
+const OFFICIAL_LOOKUP_URL = "https://lottolookup.com.br/api";
 const OFFICIAL_API_SLUGS = {
   "mega-sena": "megasena",
   lotofacil: "lotofacil",
@@ -50,6 +51,18 @@ const OFFICIAL_HOME_KEYS = {
   "dia-de-sorte": "diaDeSorte",
   "super-sete": "superSete",
   milionaria: "maisMilionaria",
+  federal: "federal",
+};
+const OFFICIAL_LOOKUP_KEYS = {
+  "mega-sena": "megasena",
+  lotofacil: "lotofacil",
+  quina: "quina",
+  lotomania: "lotomania",
+  timemania: "timemania",
+  "dupla-sena": "duplasena",
+  "dia-de-sorte": "diadesorte",
+  "super-sete": "supersete",
+  milionaria: "maismilionaria",
   federal: "federal",
 };
 
@@ -168,6 +181,7 @@ setInterval(() => {
 const officialResultsCache = {
   value: null,
   expiresAt: 0,
+  source: "unknown",
 };
 
 const formatCurrencyBRL = (value) => {
@@ -361,6 +375,29 @@ const fetchAllOfficialResultsFromHome = async (gameIds) => {
   return results;
 };
 
+const fetchAllOfficialResultsFromLookup = async (gameIds) => {
+  const payload = await requestOfficialJson(OFFICIAL_LOOKUP_URL, OFFICIAL_API_TIMEOUT_MS);
+  if (!payload || typeof payload !== "object") {
+    throw new Error("official_lookup_invalid_payload");
+  }
+
+  const results = [];
+  for (const gameId of gameIds) {
+    const lookupKey = OFFICIAL_LOOKUP_KEYS[gameId];
+    const entry = payload?.[lookupKey];
+    if (!entry || typeof entry !== "object") continue;
+
+    const mapped = mapOfficialApiResponse(gameId, entry);
+    if (mapped) results.push(mapped);
+  }
+
+  if (!results.length) {
+    throw new Error("official_lookup_empty");
+  }
+
+  return results;
+};
+
 const fetchAllOfficialResultsByGame = async (gameIds) => {
   const outcomes = [];
   const BATCH_SIZE = 3;
@@ -396,11 +433,25 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
 
   const gameIds = Object.keys(OFFICIAL_API_SLUGS);
   let results = [];
+  let source = "unknown";
   try {
     results = await fetchAllOfficialResultsFromHome(gameIds);
+    source = "caixa_home";
   } catch (error) {
     console.warn("Official home endpoint failed; falling back to per-game endpoints:", error);
     results = await fetchAllOfficialResultsByGame(gameIds);
+    if (results.length) {
+      source = "caixa_games";
+    }
+  }
+
+  if (!results.length) {
+    try {
+      results = await fetchAllOfficialResultsFromLookup(gameIds);
+      source = "lottolookup";
+    } catch (error) {
+      console.warn("Lookup fallback endpoint failed:", error);
+    }
   }
 
   if (!results.length) {
@@ -412,6 +463,7 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
 
   officialResultsCache.value = results;
   officialResultsCache.expiresAt = Date.now() + OFFICIAL_RESULTS_TTL_MS;
+  officialResultsCache.source = source;
   return results;
 };
 
@@ -629,7 +681,7 @@ app.get("/api/official-results", async (req, res) => {
     const results = await fetchAllOfficialResults({ forceRefresh });
     res.json({
       updatedAt: new Date().toISOString(),
-      source: "caixa_official",
+      source: officialResultsCache.source || "unknown",
       results,
     });
   } catch (error) {
