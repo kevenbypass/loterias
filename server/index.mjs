@@ -35,11 +35,14 @@ const normalizeOfficialBaseUrl = (raw, fallback) => {
 
 const OFFICIAL_CAIXA_DEFAULT_BASE_URL =
   "https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api";
+const OFFICIAL_CAIXA_DEFAULT_PROXY_KEY = "REMOVED_PROXY_KEY";
 const OFFICIAL_API_BASE_URL = normalizeOfficialBaseUrl(
   process.env.OFFICIAL_CAIXA_BASE_URL,
   OFFICIAL_CAIXA_DEFAULT_BASE_URL
 );
-const OFFICIAL_CAIXA_PROXY_KEY = (process.env.OFFICIAL_CAIXA_PROXY_KEY || "").trim();
+const OFFICIAL_CAIXA_PROXY_KEY = (
+  process.env.OFFICIAL_CAIXA_PROXY_KEY || OFFICIAL_CAIXA_DEFAULT_PROXY_KEY
+).trim();
 const OFFICIAL_API_HOME_URL = `${OFFICIAL_API_BASE_URL}/home/ultimos-resultados`;
 const OFFICIAL_LOOKUP_URL = "https://lottolookup.com.br/api";
 const OFFICIAL_CAIXA_ORIGIN = "https://servicebus2.caixa.gov.br";

@@ -78,6 +78,8 @@ Passos:
 5. Forcar teste:
    `GET /api/official-results?force=1`
 
+Obs.: este repositório já publica com uma chave padrão de proxy para manter compatibilidade automática. Para endurecer de verdade, substitua via `OFFICIAL_CAIXA_PROXY_KEY` no Render e rode `wrangler secret put PROXY_KEY` com novo valor.
+
 ## Scripts
 
 - `npm start`: sobe backend Node/Express
