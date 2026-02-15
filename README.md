@@ -16,11 +16,12 @@ Prerequisito: Node.js 20+
    - `GEMINI_API_KEY=...`
    - `API_PORT=8787` (opcional)
    - `ALLOWED_ORIGINS=capacitor://localhost,http://localhost:3000,http://localhost,https://localhost` (somente origens explicitas; `*` e ignorado)
-   - `INTERNAL_API_KEY=` (opcional; se definir, o frontend/app precisa enviar header `X-Internal-Key`)
+   - `INTERNAL_API_KEY=` (obrigatoria em producao quando `REQUIRE_INTERNAL_API_KEY=1`)
+   - `REQUIRE_INTERNAL_API_KEY=1` (recomendado; exige `X-Internal-Key` no `/api/interpret-dream` em producao)
    - `GEMINI_MODEL=gemini-2.0-flash` (opcional)
    - `OFFICIAL_RESULTS_TTL_MS=120000` (opcional; cache dos resultados oficiais no backend)
    - `OFFICIAL_API_TIMEOUT_MS=12000` (opcional; timeout de consulta da API oficial)
-   - `OFFICIAL_CAIXA_BASE_URL=https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api` (opcional; usa proxy da Caixa por padrao)
+   - `OFFICIAL_CAIXA_BASE_URL=https://servicebus2.caixa.gov.br/portaldeloterias/api` (opcional; origem oficial direta da Caixa)
    - `OFFICIAL_CAIXA_PROXY_KEY=` (opcional; chave para autenticar no proxy Cloudflare)
    - `VITE_API_BASE_URL=` (deixe vazio para usar proxy local do Vite)
 3. Rodar frontend + backend:
@@ -46,11 +47,12 @@ Crie 2 services no Render apontando para o mesmo repositorio:
    - Environment Variables:
      - `GEMINI_API_KEY` = sua chave real
      - `ALLOWED_ORIGINS` = `capacitor://localhost,http://localhost:3000,http://localhost,https://localhost,https://SEU-FRONTEND.onrender.com` (nao usar `*`)
-     - `INTERNAL_API_KEY` = opcional para bloquear bots sem chave interna
+     - `INTERNAL_API_KEY` = obrigatoria (com `REQUIRE_INTERNAL_API_KEY=1`)
+     - `REQUIRE_INTERNAL_API_KEY` = `1` (recomendado)
      - `OFFICIAL_RESULTS_TTL_MS` = opcional (default `120000`)
      - `OFFICIAL_API_TIMEOUT_MS` = opcional (default `12000`)
-     - `OFFICIAL_CAIXA_BASE_URL` = opcional (default `https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api`)
-     - `OFFICIAL_CAIXA_PROXY_KEY` = opcional (se usar Cloudflare Worker com chave)
+     - `OFFICIAL_CAIXA_BASE_URL` = opcional (default `https://servicebus2.caixa.gov.br/portaldeloterias/api`)
+     - `OFFICIAL_CAIXA_PROXY_KEY` = opcional (obrigatoria apenas se `OFFICIAL_CAIXA_BASE_URL` apontar para Worker proxy)
 
 Depois de publicar o backend, pegue a URL (ex.: `https://loterias-api.onrender.com`) e coloque no build mobile/local:
 
@@ -77,8 +79,6 @@ Passos:
    - `OFFICIAL_CAIXA_PROXY_KEY=mesmo_valor_do_PROXY_KEY`
 5. Forcar teste:
    `GET /api/official-results?force=1`
-
-Obs.: este repositório já publica com uma chave padrão de proxy para manter compatibilidade automática. Para endurecer de verdade, substitua via `OFFICIAL_CAIXA_PROXY_KEY` no Render e rode `wrangler secret put PROXY_KEY` com novo valor.
 
 ## Scripts
 

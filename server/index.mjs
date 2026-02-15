@@ -20,6 +20,8 @@ const port = Number(process.env.PORT || process.env.API_PORT || 8787);
 const apiKey = process.env.GEMINI_API_KEY;
 const internalApiKey = process.env.INTERNAL_API_KEY || "";
 const nodeEnv = process.env.NODE_ENV || "development";
+const isProduction = nodeEnv === "production";
+const requireInternalApiKey = (process.env.REQUIRE_INTERNAL_API_KEY || "1") === "1";
 const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 const CACHE_TTL_MS = Number(process.env.DREAM_CACHE_TTL_MS || 10 * 60 * 1000);
@@ -33,26 +35,36 @@ const normalizeOfficialBaseUrl = (raw, fallback) => {
   return base.replace(/\/+$/, "");
 };
 
-const OFFICIAL_CAIXA_DEFAULT_BASE_URL =
+const OFFICIAL_CAIXA_DIRECT_BASE_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api";
+const OFFICIAL_CAIXA_PROXY_DEFAULT_BASE_URL =
   "https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api";
-const OFFICIAL_CAIXA_DEFAULT_PROXY_KEY = "REMOVED_PROXY_KEY";
-const OFFICIAL_API_BASE_URL = normalizeOfficialBaseUrl(
+const configuredOfficialBaseUrl = normalizeOfficialBaseUrl(
   process.env.OFFICIAL_CAIXA_BASE_URL,
-  OFFICIAL_CAIXA_DEFAULT_BASE_URL
+  OFFICIAL_CAIXA_PROXY_DEFAULT_BASE_URL
 );
-const OFFICIAL_CAIXA_PROXY_KEY = (
-  process.env.OFFICIAL_CAIXA_PROXY_KEY || OFFICIAL_CAIXA_DEFAULT_PROXY_KEY
-).trim();
+const OFFICIAL_CAIXA_ORIGIN = "https://servicebus2.caixa.gov.br";
+const OFFICIAL_CAIXA_PROXY_KEY = (process.env.OFFICIAL_CAIXA_PROXY_KEY || "").trim();
+const resolveUrlOrigin = (url, fallback) => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return fallback;
+  }
+};
+const configuredOfficialBaseOrigin = resolveUrlOrigin(configuredOfficialBaseUrl, OFFICIAL_CAIXA_ORIGIN);
+const usingConfiguredProxyBase = configuredOfficialBaseOrigin !== OFFICIAL_CAIXA_ORIGIN;
+
+let OFFICIAL_API_BASE_URL = configuredOfficialBaseUrl;
+if (usingConfiguredProxyBase && !OFFICIAL_CAIXA_PROXY_KEY) {
+  console.warn(
+    "OFFICIAL_CAIXA_PROXY_KEY missing while OFFICIAL_CAIXA_BASE_URL points to proxy; falling back to direct Caixa base URL."
+  );
+  OFFICIAL_API_BASE_URL = OFFICIAL_CAIXA_DIRECT_BASE_URL;
+}
+
+const OFFICIAL_CAIXA_BASE_ORIGIN = resolveUrlOrigin(OFFICIAL_API_BASE_URL, OFFICIAL_CAIXA_ORIGIN);
 const OFFICIAL_API_HOME_URL = `${OFFICIAL_API_BASE_URL}/home/ultimos-resultados`;
 const OFFICIAL_LOOKUP_URL = "https://lottolookup.com.br/api";
-const OFFICIAL_CAIXA_ORIGIN = "https://servicebus2.caixa.gov.br";
-const OFFICIAL_CAIXA_BASE_ORIGIN = (() => {
-  try {
-    return new URL(OFFICIAL_API_BASE_URL).origin;
-  } catch {
-    return OFFICIAL_CAIXA_ORIGIN;
-  }
-})();
 const OFFICIAL_API_SLUGS = {
   "mega-sena": "megasena",
   lotofacil: "lotofacil",
@@ -935,8 +947,19 @@ const aiLimiter = rateLimit({
 
 app.use(generalLimiter);
 
+if (isProduction && requireInternalApiKey && !internalApiKey) {
+  console.error(
+    "INTERNAL_API_KEY is required in production when REQUIRE_INTERNAL_API_KEY=1. /api/interpret-dream will return 503 until configured."
+  );
+}
+
 const requireInternalKey = (req, res, next) => {
   if (!internalApiKey) {
+    if (isProduction && requireInternalApiKey) {
+      res.status(503).json({ error: "internal_api_key_required" });
+      return;
+    }
+
     next();
     return;
   }

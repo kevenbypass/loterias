@@ -63,11 +63,13 @@ export default {
     }
 
     const requiredKey = (env.PROXY_KEY || "").trim();
-    if (requiredKey) {
-      const providedKey = (request.headers.get("X-Proxy-Key") || "").trim();
-      if (!providedKey || providedKey !== requiredKey) {
-        return json(401, { error: "unauthorized" });
-      }
+    if (!requiredKey) {
+      return json(503, { error: "proxy_key_not_configured" });
+    }
+
+    const providedKey = (request.headers.get("X-Proxy-Key") || "").trim();
+    if (!providedKey || providedKey !== requiredKey) {
+      return json(401, { error: "unauthorized" });
     }
 
     const timeoutMs = normalizedTimeout(env.REQUEST_TIMEOUT_MS);
