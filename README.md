@@ -15,7 +15,7 @@ Prerequisito: Node.js 20+
 2. Criar `.env.local` com base em `.env.example` e definir:
    - `GEMINI_API_KEY=...`
    - `API_PORT=8787` (opcional)
-   - `ALLOWED_ORIGINS=capacitor://localhost,http://localhost:3000,http://localhost,https://localhost`
+   - `ALLOWED_ORIGINS=capacitor://localhost,http://localhost:3000,http://localhost,https://localhost` (somente origens explicitas; `*` e ignorado)
    - `INTERNAL_API_KEY=` (opcional; se definir, o frontend/app precisa enviar header `X-Internal-Key`)
    - `GEMINI_MODEL=gemini-2.0-flash` (opcional)
    - `VITE_API_BASE_URL=` (deixe vazio para usar proxy local do Vite)
@@ -41,7 +41,7 @@ Crie 2 services no Render apontando para o mesmo repositorio:
    - Start Command: `npm start`
    - Environment Variables:
      - `GEMINI_API_KEY` = sua chave real
-     - `ALLOWED_ORIGINS` = `capacitor://localhost,http://localhost:3000,http://localhost,https://localhost,https://SEU-FRONTEND.onrender.com`
+     - `ALLOWED_ORIGINS` = `capacitor://localhost,http://localhost:3000,http://localhost,https://localhost,https://SEU-FRONTEND.onrender.com` (nao usar `*`)
      - `INTERNAL_API_KEY` = opcional para bloquear bots sem chave interna
 
 Depois de publicar o backend, pegue a URL (ex.: `https://loterias-api.onrender.com`) e coloque no build mobile/local:

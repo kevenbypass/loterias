@@ -11,6 +11,7 @@ dotenv.config();
 
 const app = express();
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || process.env.API_PORT || 8787);
@@ -32,14 +33,15 @@ const resolveAllowedOrigins = (raw) => {
     ]);
   }
 
-  if (raw.trim() === "*") {
-    return "*";
-  }
-
   const list = raw
     .split(/[;,]/)
     .map((origin) => origin.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((origin) => origin !== "*");
+
+  if (raw.includes("*")) {
+    console.warn("Ignoring wildcard '*' in ALLOWED_ORIGINS. Use explicit origins only.");
+  }
 
   return new Set(list);
 };
@@ -47,7 +49,6 @@ const resolveAllowedOrigins = (raw) => {
 const allowedOrigins = resolveAllowedOrigins(process.env.ALLOWED_ORIGINS);
 
 const isOriginAllowed = (origin) => {
-  if (allowedOrigins === "*") return true;
   if (!origin) return false;
   return allowedOrigins.has(origin);
 };
@@ -242,6 +243,18 @@ app.use(
   })
 );
 
+app.get("/", (_req, res) => {
+  res.json({ ok: true, service: "loterias-api" });
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).send("ok");
+});
+
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true });
+});
+
 app.use(express.json({ limit: "50kb" }));
 
 app.use(
@@ -306,18 +319,6 @@ const requireInternalKey = (req, res, next) => {
 
   next();
 };
-
-app.get("/", (_req, res) => {
-  res.json({ ok: true, service: "loterias-api" });
-});
-
-app.get("/health", (_req, res) => {
-  res.status(200).send("ok");
-});
-
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
-});
 
 app.post("/api/interpret-dream", aiLimiter, requireInternalKey, async (req, res) => {
   const payloadValidation = validatePayload(req.body);
@@ -417,6 +418,15 @@ app.post("/api/interpret-dream", aiLimiter, requireInternalKey, async (req, res)
     console.error("Erro no backend Gemini:", error);
     res.status(500).json({ error: "gemini_request_failed" });
   }
+});
+
+app.use((_req, res) => {
+  res.status(404).json({ error: "not_found" });
+});
+
+app.use((error, _req, res, _next) => {
+  console.error("Unhandled server error:", error);
+  res.status(500).json({ error: "internal_server_error" });
 });
 
 app.listen(port, host, () => {
