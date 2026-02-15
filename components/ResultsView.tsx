@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Trophy, Calendar, DollarSign, Clover, Plus, Shield, RefreshCw, AlertCircle } from 'lucide-react';
 import { GAMES, MONTH_NAMES } from '../constants';
 import { LotteryResult } from '../types';
@@ -9,23 +9,58 @@ const ResultsView: React.FC = () => {
   const [results, setResults] = useState<LotteryResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const inFlightRef = useRef(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+  const loadData = async ({ silent = false, force = false }: { silent?: boolean; force?: boolean } = {}) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
     try {
-      const data = await fetchAllResults();
+      const data = await fetchAllResults({ force });
       setResults(data);
       setError(false);
+      setLastUpdatedAt(new Date());
     } catch (e) {
       console.error(e);
       setError(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      inFlightRef.current = false;
     }
   };
 
   useEffect(() => {
     loadData();
+
+    const intervalId = window.setInterval(() => {
+      loadData({ silent: true });
+    }, AUTO_REFRESH_MS);
+
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadData({ silent: true });
+      }
+    };
+
+    window.addEventListener('focus', onFocusOrVisible);
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocusOrVisible);
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+    };
   }, []);
 
   if (loading) {
@@ -53,14 +88,19 @@ const ResultsView: React.FC = () => {
         </h2>
         <p className="text-sm text-slate-500 dark:text-gray-400 mt-2 font-medium flex items-center justify-center gap-2">
            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-           Dados atualizados da Caixa
+           {refreshing
+             ? 'Atualizando dados...'
+             : lastUpdatedAt
+             ? `Atualizado às ${lastUpdatedAt.toLocaleTimeString('pt-BR')}`
+             : 'Dados atualizados da Caixa'}
         </p>
         <button 
-           onClick={loadData}
+           onClick={() => loadData({ force: true })}
+           disabled={loading || refreshing}
            className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 transition-colors"
            title="Atualizar"
         >
-            <RefreshCw size={16} className="text-slate-500 dark:text-slate-300" />
+            <RefreshCw size={16} className={`text-slate-500 dark:text-slate-300 ${(loading || refreshing) ? 'animate-spin' : ''}`} />
         </button>
       </div>
 

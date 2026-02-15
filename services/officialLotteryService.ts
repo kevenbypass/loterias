@@ -1,117 +1,188 @@
 import { LotteryResult } from "../types";
 import { MOCK_RESULTS } from "../constants";
 
-// Helper to format currency
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+const apiUrl = (path: string) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
+
 const formatCurrency = (value: number): string => {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 };
 
-// Mapping app Game IDs to API slugs
 const API_SLUGS: Record<string, string> = {
-  'mega-sena': 'megasena',
-  'lotofacil': 'lotofacil',
-  'quina': 'quina',
-  'lotomania': 'lotomania',
-  'timemania': 'timemania',
-  'dupla-sena': 'duplasena',
-  'dia-de-sorte': 'diadesorte',
-  'super-sete': 'supersete',
-  'milionaria': 'maismilionaria', // Check specific API slug
-  'federal': 'federal'
+  "mega-sena": "megasena",
+  lotofacil: "lotofacil",
+  quina: "quina",
+  lotomania: "lotomania",
+  timemania: "timemania",
+  "dupla-sena": "duplasena",
+  "dia-de-sorte": "diadesorte",
+  "super-sete": "supersete",
+  milionaria: "maismilionaria",
+  federal: "federal",
 };
 
-interface ApiResponse {
-  concurso: number;
-  data: string;
-  dezenas: string[];
-  dezenasOrdemSorteio?: string[];
-  trevos?: string[]; // For +Milionaria
-  timeCoracao?: string; // For Timemania
-  mesSorte?: string; // For Dia de Sorte
-  acumulou: boolean;
-  valorEstimadoProximoConcurso: number;
-  dataProximoConcurso: string;
+interface BackendOfficialResultsResponse {
+  updatedAt?: string;
+  source?: string;
+  results?: unknown;
 }
 
-// Fetch individual game result
-const fetchGameResult = async (gameId: string): Promise<LotteryResult | null> => {
+interface LegacyApiResponse {
+  concurso?: number;
+  data?: string;
+  dezenas?: string[];
+  dezenasOrdemSorteio?: string[];
+  trevos?: string[];
+  timeCoracao?: string;
+  mesSorte?: string;
+  acumulou?: boolean;
+  valorEstimadoProximoConcurso?: number;
+  dataProximoConcurso?: string;
+}
+
+const normalizeNumbers = (values: unknown): number[] => {
+  if (!Array.isArray(values)) return [];
+
+  return values
+    .map((value) => Number.parseInt(String(value), 10))
+    .filter((value) => Number.isFinite(value));
+};
+
+const isLotteryResult = (value: unknown): value is LotteryResult => {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<LotteryResult>;
+  return (
+    typeof candidate.gameId === "string" &&
+    typeof candidate.contestNumber === "string" &&
+    typeof candidate.date === "string" &&
+    Array.isArray(candidate.numbers) &&
+    typeof candidate.accumulated === "boolean" &&
+    typeof candidate.nextPrize === "string" &&
+    typeof candidate.nextDate === "string"
+  );
+};
+
+const fetchViaBackend = async ({ force = false } = {}): Promise<LotteryResult[] | null> => {
+  const query = force ? "?force=1" : "";
+  const response = await fetch(apiUrl(`/api/official-results${query}`), {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Backend official results failed: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as BackendOfficialResultsResponse | unknown;
+
+  if (Array.isArray(payload)) {
+    return payload.filter(isLotteryResult);
+  }
+
+  if (
+    payload &&
+    typeof payload === "object" &&
+    Array.isArray((payload as BackendOfficialResultsResponse).results)
+  ) {
+    return (payload as BackendOfficialResultsResponse).results!.filter(isLotteryResult);
+  }
+
+  return null;
+};
+
+const fetchLegacyGameResult = async (gameId: string): Promise<LotteryResult | null> => {
   const apiSlug = API_SLUGS[gameId];
   if (!apiSlug) return null;
 
+  const endpoint = `https://loteriascaixa-api.herokuapp.com/api/${apiSlug}/latest?ts=${Date.now()}`;
+
   try {
-    // Using a common public wrapper for Loterias Caixa
-    // Note: This is a third-party open source API widely used for React demos
-    const response = await fetch(`https://loteriascaixa-api.herokuapp.com/api/${apiSlug}/latest`);
-    
+    const response = await fetch(endpoint, {
+      method: "GET",
+      cache: "no-store",
+    });
+
     if (!response.ok) {
-      throw new Error('Network response was not ok');
+      throw new Error(`legacy_provider_http_${response.status}`);
     }
 
-    const data: ApiResponse = await response.json();
+    const data = (await response.json()) as LegacyApiResponse;
+    const numbers = normalizeNumbers(data.dezenas?.length ? data.dezenas : data.dezenasOrdemSorteio);
+    if (!numbers.length) return null;
 
-    // Map API response to our internal type
-    let numbers = data.dezenas.map(d => parseInt(d));
-    let specialNumbers: number[] | undefined = undefined;
-    let extraString: string | undefined = undefined;
+    let specialNumbers: number[] | undefined;
+    let extraString: string | undefined;
 
-    // Handle specific game logic
-    if (gameId === 'milionaria' && data.trevos) {
-       specialNumbers = data.trevos.map(t => parseInt(t));
+    if (gameId === "milionaria" && data.trevos) {
+      specialNumbers = normalizeNumbers(data.trevos);
     }
 
-    if (gameId === 'dia-de-sorte' && data.mesSorte) {
-       // Convert Month name to number if needed or handle mapping
-       // The API usually returns the name "Maio", we might need to map it back or just display it
-       // For this implementation, we will keep the month logic visually separate in the UI if it's not a number
-       // But wait, our components expect numbers for specialNumbers to map to names.
-       // The API returns "Maio". Let's try to map it back to 5.
-       const months = [
-         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-       ];
-       const monthIdx = months.findIndex(m => m.toLowerCase() === data.mesSorte?.toLowerCase());
-       if (monthIdx !== -1) {
-           specialNumbers = [monthIdx + 1];
-       }
+    if (gameId === "dia-de-sorte" && data.mesSorte) {
+      const months = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+      ];
+      const monthIdx = months.findIndex((month) => month.toLowerCase() === data.mesSorte?.toLowerCase());
+      if (monthIdx !== -1) specialNumbers = [monthIdx + 1];
     }
 
-    if (gameId === 'timemania' && data.timeCoracao) {
-        extraString = data.timeCoracao;
+    if (gameId === "timemania" && data.timeCoracao) {
+      extraString = data.timeCoracao;
     }
 
     return {
       gameId,
-      contestNumber: data.concurso.toString(),
-      date: data.data,
+      contestNumber: String(data.concurso ?? ""),
+      date: data.data ?? "",
       numbers,
       specialNumbers,
       extraString,
-      accumulated: data.acumulou,
-      nextPrize: formatCurrency(data.valorEstimadoProximoConcurso),
-      nextDate: data.dataProximoConcurso
+      accumulated: Boolean(data.acumulou),
+      nextPrize: formatCurrency(Number(data.valorEstimadoProximoConcurso ?? 0)),
+      nextDate: data.dataProximoConcurso ?? "",
     };
-
   } catch (error) {
-    console.warn(`Failed to fetch official results for ${gameId}, using mock.`, error);
+    console.warn(`Failed to fetch legacy official results for ${gameId}.`, error);
     return null;
   }
 };
 
-export const fetchAllResults = async (): Promise<LotteryResult[]> => {
-  // We fetch all supported games in parallel
-  // We exclude 'federal' from the main view often because structure is different, but let's try to include
+export const fetchAllResults = async ({
+  force = false,
+}: {
+  force?: boolean;
+} = {}): Promise<LotteryResult[]> => {
+  try {
+    const backendResults = await fetchViaBackend({ force });
+    if (backendResults && backendResults.length > 0) {
+      return backendResults;
+    }
+  } catch (error) {
+    console.warn("Backend official results endpoint unavailable; using legacy provider fallback.", error);
+  }
+
   const gamesToFetch = Object.keys(API_SLUGS);
-  
   const results = await Promise.all(
     gamesToFetch.map(async (gameId) => {
-      const liveData = await fetchGameResult(gameId);
+      const liveData = await fetchLegacyGameResult(gameId);
       if (liveData) return liveData;
-      
-      // Fallback to mock data if API fails
-      const mock = MOCK_RESULTS.find(m => m.gameId === gameId);
-      return mock || null;
+      return MOCK_RESULTS.find((mock) => mock.gameId === gameId) || null;
     })
   );
 
-  return results.filter((r): r is LotteryResult => r !== null);
+  return results.filter((result): result is LotteryResult => result !== null);
 };

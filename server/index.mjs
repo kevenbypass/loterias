@@ -22,6 +22,37 @@ const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 const CACHE_TTL_MS = Number(process.env.DREAM_CACHE_TTL_MS || 10 * 60 * 1000);
 const MAX_CACHE_ITEMS = Number(process.env.DREAM_CACHE_MAX_ITEMS || 500);
+const OFFICIAL_API_TIMEOUT_MS = Number(process.env.OFFICIAL_API_TIMEOUT_MS || 12000);
+const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 * 60 * 1000);
+
+const OFFICIAL_API_BASE_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api";
+const OFFICIAL_API_SLUGS = {
+  "mega-sena": "megasena",
+  lotofacil: "lotofacil",
+  quina: "quina",
+  lotomania: "lotomania",
+  timemania: "timemania",
+  "dupla-sena": "duplasena",
+  "dia-de-sorte": "diadesorte",
+  "super-sete": "supersete",
+  milionaria: "maismilionaria",
+  federal: "federal",
+};
+
+const MONTH_NAMES_PT = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
 
 const resolveAllowedOrigins = (raw) => {
   if (!raw) {
@@ -112,6 +143,141 @@ setInterval(() => {
     if (now > v.expiresAt) cache.delete(k);
   }
 }, 60 * 1000).unref();
+
+const officialResultsCache = {
+  value: null,
+  expiresAt: 0,
+};
+
+const formatCurrencyBRL = (value) => {
+  const numericValue = Number(value);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number.isFinite(numericValue) ? numericValue : 0);
+};
+
+const parseNumericList = (values) => {
+  if (!Array.isArray(values)) return [];
+
+  const numbers = [];
+  for (const item of values) {
+    const parsed = Number.parseInt(String(item), 10);
+    if (Number.isFinite(parsed)) numbers.push(parsed);
+  }
+
+  return numbers;
+};
+
+const monthNameToNumber = (monthName) => {
+  if (typeof monthName !== "string") return null;
+
+  const normalized = monthName.trim().toLowerCase();
+  const idx = MONTH_NAMES_PT.findIndex((month) => month.toLowerCase() === normalized);
+  return idx >= 0 ? idx + 1 : null;
+};
+
+const mapOfficialApiResponse = (gameId, data) => {
+  const numbers = parseNumericList(
+    Array.isArray(data?.listaDezenas) && data.listaDezenas.length
+      ? data.listaDezenas
+      : data?.dezenasSorteadasOrdemSorteio
+  );
+
+  if (!numbers.length) return null;
+
+  let specialNumbers;
+  let extraString;
+
+  if (gameId === "milionaria") {
+    const trevos = parseNumericList(data?.trevosSorteados);
+    if (trevos.length) specialNumbers = trevos;
+  }
+
+  if (gameId === "dia-de-sorte") {
+    const monthNumber = monthNameToNumber(data?.nomeTimeCoracaoMesSorte);
+    if (monthNumber) specialNumbers = [monthNumber];
+  }
+
+  if (gameId === "timemania" && typeof data?.nomeTimeCoracaoMesSorte === "string") {
+    extraString = data.nomeTimeCoracaoMesSorte.trim() || undefined;
+  }
+
+  return {
+    gameId,
+    contestNumber: String(data?.numero ?? ""),
+    date: typeof data?.dataApuracao === "string" ? data.dataApuracao : "",
+    numbers,
+    specialNumbers,
+    extraString,
+    accumulated: Boolean(data?.acumulado),
+    nextPrize: formatCurrencyBRL(data?.valorEstimadoProximoConcurso),
+    nextDate: typeof data?.dataProximoConcurso === "string" ? data.dataProximoConcurso : "",
+  };
+};
+
+const fetchOfficialGameResult = async (gameId) => {
+  const slug = OFFICIAL_API_SLUGS[gameId];
+  if (!slug) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OFFICIAL_API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${OFFICIAL_API_BASE_URL}/${slug}`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`official_api_http_${response.status}`);
+    }
+
+    const payload = await response.json();
+    const mapped = mapOfficialApiResponse(gameId, payload);
+    if (!mapped) {
+      throw new Error("official_api_invalid_payload");
+    }
+
+    return mapped;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
+  const now = Date.now();
+  if (!forceRefresh && officialResultsCache.value && now < officialResultsCache.expiresAt) {
+    return officialResultsCache.value;
+  }
+
+  const gameIds = Object.keys(OFFICIAL_API_SLUGS);
+  const settled = await Promise.allSettled(gameIds.map((gameId) => fetchOfficialGameResult(gameId)));
+
+  const results = [];
+  for (const outcome of settled) {
+    if (outcome.status === "fulfilled" && outcome.value) {
+      results.push(outcome.value);
+      continue;
+    }
+
+    if (outcome.status === "rejected") {
+      console.warn("Official results provider failed:", outcome.reason);
+    }
+  }
+
+  if (!results.length) {
+    throw new Error("official_results_unavailable");
+  }
+
+  const orderIndex = new Map(gameIds.map((gameId, idx) => [gameId, idx]));
+  results.sort((a, b) => (orderIndex.get(a.gameId) ?? 999) - (orderIndex.get(b.gameId) ?? 999));
+
+  officialResultsCache.value = results;
+  officialResultsCache.expiresAt = Date.now() + OFFICIAL_RESULTS_TTL_MS;
+  return results;
+};
 
 const sanitizeGame = (rawGame) => {
   if (!rawGame || typeof rawGame !== "object") return null;
@@ -319,6 +485,22 @@ const requireInternalKey = (req, res, next) => {
 
   next();
 };
+
+app.get("/api/official-results", async (req, res) => {
+  const forceRefresh = typeof req.query.force === "string" && req.query.force === "1";
+
+  try {
+    const results = await fetchAllOfficialResults({ forceRefresh });
+    res.json({
+      updatedAt: new Date().toISOString(),
+      source: "caixa_official",
+      results,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar resultados oficiais:", error);
+    res.status(502).json({ error: "official_results_unavailable" });
+  }
+});
 
 app.post("/api/interpret-dream", aiLimiter, requireInternalKey, async (req, res) => {
   const payloadValidation = validatePayload(req.body);

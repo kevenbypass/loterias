@@ -18,6 +18,8 @@ Prerequisito: Node.js 20+
    - `ALLOWED_ORIGINS=capacitor://localhost,http://localhost:3000,http://localhost,https://localhost` (somente origens explicitas; `*` e ignorado)
    - `INTERNAL_API_KEY=` (opcional; se definir, o frontend/app precisa enviar header `X-Internal-Key`)
    - `GEMINI_MODEL=gemini-2.0-flash` (opcional)
+   - `OFFICIAL_RESULTS_TTL_MS=120000` (opcional; cache dos resultados oficiais no backend)
+   - `OFFICIAL_API_TIMEOUT_MS=12000` (opcional; timeout de consulta da API oficial)
    - `VITE_API_BASE_URL=` (deixe vazio para usar proxy local do Vite)
 3. Rodar frontend + backend:
    `npm run dev`
@@ -43,6 +45,8 @@ Crie 2 services no Render apontando para o mesmo repositorio:
      - `GEMINI_API_KEY` = sua chave real
      - `ALLOWED_ORIGINS` = `capacitor://localhost,http://localhost:3000,http://localhost,https://localhost,https://SEU-FRONTEND.onrender.com` (nao usar `*`)
      - `INTERNAL_API_KEY` = opcional para bloquear bots sem chave interna
+     - `OFFICIAL_RESULTS_TTL_MS` = opcional (default `120000`)
+     - `OFFICIAL_API_TIMEOUT_MS` = opcional (default `12000`)
 
 Depois de publicar o backend, pegue a URL (ex.: `https://loterias-api.onrender.com`) e coloque no build mobile/local:
 
