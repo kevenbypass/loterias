@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Wand2, Sparkles, ChevronDown, Clover } from 'lucide-react';
 import { LotteryGame } from '../types';
 import { GAMES } from '../constants';
@@ -20,6 +20,16 @@ const DreamView: React.FC<DreamViewProps> = ({
 }) => {
   const [localGameId, setLocalGameId] = useState<string>(selectedGame.id);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [internalKeyDraft, setInternalKeyDraft] = useState("");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lotosorte_internal_key") || "";
+      setInternalKeyDraft(stored);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const targetGame = GAMES.find(g => g.id === localGameId) || GAMES[0];
 
@@ -135,6 +145,56 @@ const DreamView: React.FC<DreamViewProps> = ({
               </>
           )}
         </button>
+
+        <details className="mt-5 rounded-2xl border border-slate-100 dark:border-white/10 bg-slate-50/40 dark:bg-black/10 px-4 py-3">
+          <summary className="cursor-pointer select-none text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            Acesso (admin)
+          </summary>
+          <div className="mt-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Para proteger a cota da IA, o endpoint pode exigir uma chave interna no backend. Se você for o admin,
+              cole a chave aqui para liberar o Sonhos IA neste navegador.
+            </p>
+            <div className="mt-3 flex flex-col sm:flex-row gap-2">
+              <input
+                type="password"
+                value={internalKeyDraft}
+                onChange={(e) => setInternalKeyDraft(e.target.value)}
+                placeholder="Chave interna (X-Internal-Key)"
+                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-purple-500 dark:focus:border-purple-500/50"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold text-sm hover:opacity-90 transition-opacity"
+                onClick={() => {
+                  try {
+                    localStorage.setItem("lotosorte_internal_key", internalKeyDraft.trim());
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Salvar
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl bg-transparent border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                onClick={() => {
+                  setInternalKeyDraft("");
+                  try {
+                    localStorage.removeItem("lotosorte_internal_key");
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Limpar
+              </button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   );

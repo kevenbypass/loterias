@@ -1,9 +1,21 @@
-﻿import { LotteryGame } from "../types";
+import { LotteryGame } from "../types";
 
 interface DreamInterpretationResponse {
   main?: unknown;
   special?: unknown;
   extraString?: unknown;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
 }
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
@@ -18,23 +30,52 @@ const parseApiResponse = (payload: DreamInterpretationResponse) => {
   return { main, special, extraString };
 };
 
+const getInternalKey = () => {
+  try {
+    const raw = localStorage.getItem("lotosorte_internal_key");
+    return (raw ?? "").trim();
+  } catch {
+    return "";
+  }
+};
+
 const requestDreamInterpretation = async (
   dreamText: string,
   game: LotteryGame
 ) => {
+  const internalKey = getInternalKey();
   const response = await fetch(apiUrl("/api/interpret-dream"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(internalKey ? { "X-Internal-Key": internalKey } : {}),
     },
     body: JSON.stringify({ dreamText, game }),
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      errorText || `Gemini API request failed with status ${response.status}`
-    );
+    let code: string | undefined;
+    let message = `Gemini API request failed with status ${response.status}`;
+
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json()) as { error?: unknown };
+        if (typeof payload?.error === "string") {
+          code = payload.error;
+          message = payload.error;
+        } else {
+          message = JSON.stringify(payload);
+        }
+      } else {
+        const text = await response.text();
+        if (text) message = text;
+      }
+    } catch {
+      // ignore parse errors; fall back to generic message.
+    }
+
+    throw new ApiError(message, response.status, code);
   }
 
   const payload = (await response.json()) as DreamInterpretationResponse;
@@ -45,97 +86,70 @@ export const interpretDream = async (
   dreamText: string,
   game: LotteryGame
 ): Promise<{ main: number[]; special: number[]; extraString?: string }> => {
-  const generateFallback = () => ({
-    main: generateRandomNumbers(
-      game.defaultCount,
-      game.minNumber,
-      game.maxNumber,
-      [],
-      game.allowRepeats
-    ),
-    special: game.specialRange
-      ? generateRandomNumbers(
-          game.specialRange.count,
-          game.specialRange.min,
-          game.specialRange.max
-        )
-      : [],
-    extraString: game.extraOptions
-      ? game.extraOptions.options[
-          Math.floor(Math.random() * game.extraOptions.options.length)
-        ]
-      : undefined,
-  });
+  const result = await requestDreamInterpretation(dreamText, game);
+  const main = result.main || [];
+  const special = result.special || [];
+  const extraString = result.extraString;
 
-  try {
-    const result = await requestDreamInterpretation(dreamText, game);
-    const main = result.main || [];
-    const special = result.special || [];
-    const extraString = result.extraString;
+  let validMain = main
+    .filter(
+      (n: number) =>
+        typeof n === "number" && n >= game.minNumber && n <= game.maxNumber
+    )
+    .slice(0, game.maxCount);
 
-    let validMain = main
+  let validSpecial = [];
+  if (game.specialRange) {
+    validSpecial = special
       .filter(
         (n: number) =>
-          typeof n === "number" && n >= game.minNumber && n <= game.maxNumber
+          typeof n === "number" &&
+          n >= game.specialRange!.min &&
+          n <= game.specialRange!.max
       )
-      .slice(0, game.maxCount);
-
-    let validSpecial = [];
-    if (game.specialRange) {
-      validSpecial = special
-        .filter(
-          (n: number) =>
-            typeof n === "number" &&
-            n >= game.specialRange!.min &&
-            n <= game.specialRange!.max
-        )
-        .slice(0, game.specialRange.count);
-    }
-
-    if (validMain.length < game.defaultCount) {
-      const needed = game.defaultCount - validMain.length;
-      const extras = generateRandomNumbers(
-        needed,
-        game.minNumber,
-        game.maxNumber,
-        validMain,
-        game.allowRepeats
-      );
-      validMain = [...validMain, ...extras];
-    }
-
-    if (game.specialRange && validSpecial.length < game.specialRange.count) {
-      const needed = game.specialRange.count - validSpecial.length;
-      const extras = generateRandomNumbers(
-        needed,
-        game.specialRange.min,
-        game.specialRange.max,
-        validSpecial
-      );
-      validSpecial = [...validSpecial, ...extras];
-    }
-
-    if (!game.allowRepeats) {
-      validMain.sort((a: number, b: number) => a - b);
-      validSpecial.sort((a: number, b: number) => a - b);
-    }
-
-    let validExtraString = extraString;
-    if (
-      game.extraOptions &&
-      (!validExtraString || !game.extraOptions.options.includes(validExtraString))
-    ) {
-      validExtraString =
-        game.extraOptions.options[
-          Math.floor(Math.random() * game.extraOptions.options.length)
-        ];
-    }
-
-    return { main: validMain, special: validSpecial, extraString: validExtraString };
-  } catch (error) {
-    console.error("Erro na interpretacao do sonho:", error);
-    return generateFallback();
+      .slice(0, game.specialRange.count);
   }
+
+  if (validMain.length < game.defaultCount) {
+    const needed = game.defaultCount - validMain.length;
+    const extras = generateRandomNumbers(
+      needed,
+      game.minNumber,
+      game.maxNumber,
+      validMain,
+      game.allowRepeats
+    );
+    validMain = [...validMain, ...extras];
+  }
+
+  if (game.specialRange && validSpecial.length < game.specialRange.count) {
+    const needed = game.specialRange.count - validSpecial.length;
+    const extras = generateRandomNumbers(
+      needed,
+      game.specialRange.min,
+      game.specialRange.max,
+      validSpecial
+    );
+    validSpecial = [...validSpecial, ...extras];
+  }
+
+  if (!game.allowRepeats) {
+    validMain.sort((a: number, b: number) => a - b);
+    validSpecial.sort((a: number, b: number) => a - b);
+  }
+
+  let validExtraString = extraString;
+  if (
+    game.extraOptions &&
+    (!validExtraString || !game.extraOptions.options.includes(validExtraString))
+  ) {
+    validExtraString =
+      game.extraOptions.options[
+        Math.floor(Math.random() * game.extraOptions.options.length)
+      ];
+  }
+
+  return { main: validMain, special: validSpecial, extraString: validExtraString };
 };
 
 export const generateRandomNumbers = (
@@ -167,3 +181,4 @@ export const generateRandomNumbers = (
   const result = Array.from(numbers).filter((n) => !exclude.includes(n));
   return result.sort((a, b) => a - b);
 };
+
