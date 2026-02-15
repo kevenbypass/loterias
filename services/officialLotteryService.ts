@@ -34,9 +34,6 @@ export const fetchAllResults = async ({
   const response = await fetch(apiUrl(`/api/official-results${query}`), {
     method: "GET",
     cache: "no-store",
-    headers: {
-      "Cache-Control": "no-cache",
-    },
   });
 
   if (!response.ok) {
