@@ -206,19 +206,7 @@ const ResultsView: React.FC = () => {
 
                 {/* Zig-Zag Bottom Edge (Pure CSS Receipt Effect) */}
                 <div 
-                    className="absolute bottom-0 left-0 right-0 h-4 bg-white dark:bg-[#1e293b]"
-                    style={{
-                        maskImage: 'radial-gradient(circle at 10px -5px, transparent 12px, black 13px)',
-                        maskSize: '20px 20px',
-                        maskRepeat: 'repeat-x',
-                        maskPosition: 'bottom',
-                        WebkitMaskImage: 'radial-gradient(circle at 10px -5px, transparent 12px, black 13px)',
-                        WebkitMaskSize: '20px 20px',
-                        WebkitMaskRepeat: 'repeat-x',
-                        WebkitMaskPosition: 'bottom',
-                        bottom: '-10px',
-                        zIndex: 10
-                    }}
+                    className="absolute bottom-[-10px] left-0 right-0 z-10 h-4 receipt-zigzag bg-white dark:bg-[#1e293b]"
                 ></div>
               </div>
             </div>

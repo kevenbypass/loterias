@@ -21,29 +21,35 @@ const LotteryBall: React.FC<LotteryBallProps> = ({
   const isThreeDigits = formattedNumber.length > 2;
   const colorName = color === 'emerald' ? 'emerald' : color;
 
+  const getDelayClass = (rawDelay: number) => {
+    const idx = Number.isFinite(rawDelay) ? Math.round(rawDelay) : 0;
+    const clamped = Math.max(0, Math.min(60, idx));
+    return `anim-delay-${clamped}`;
+  };
+
+  const delayClass = getDelayClass(delay);
+
   // Premium Glow & Glassmorphism Styles
   const getBallStyles = () => {
-      return `
-        /* Shadow & Glow Logic */
-        shadow-[0_4px_20px_-4px_var(--tw-shadow-color)] 
-        shadow-${colorName}-500/30
-        dark:shadow-${colorName}-500/50
-        
-        /* Interactive Hover Glow */
-        md:group-hover:shadow-[0_0_30px_-4px_var(--tw-shadow-color)]
-        md:group-hover:shadow-${colorName}-500/70
-        
-        /* Border Styling - Subtle Gradient Simulation via border color + opacity */
-        border border-${colorName}-200/60
-        dark:border-${colorName}-500/30
-        md:group-hover:border-${colorName}-400
-        dark:md:group-hover:border-${colorName}-400/80
-        
-        /* Background Gradient - The Core Change for Premium Look */
-        bg-gradient-to-br 
-        from-[#ffffff] via-[#f8fafc] to-${colorName}-100/80
-        dark:from-[#1e293b] dark:via-[#0f172a] dark:to-${colorName}-900/40
-      `;
+    // Keep comments outside template literals: Tailwind v4 class extraction can be tripped up by
+    // block comment tokens (/* ... */) inside className strings, which results in missing CSS.
+    return `
+      shadow-[0_4px_20px_-4px_var(--tw-shadow-color)]
+      shadow-${colorName}-500/30
+      dark:shadow-${colorName}-500/50
+
+      md:group-hover:shadow-[0_0_30px_-4px_var(--tw-shadow-color)]
+      md:group-hover:shadow-${colorName}-500/70
+
+      border border-${colorName}-200/60
+      dark:border-${colorName}-500/30
+      md:group-hover:border-${colorName}-400
+      dark:md:group-hover:border-${colorName}-400/80
+
+      bg-gradient-to-br
+      from-[#ffffff] via-[#f8fafc] to-${colorName}-100/80
+      dark:from-[#1e293b] dark:via-[#0f172a] dark:to-${colorName}-900/40
+    `;
   };
 
   // Adjusted sizes for better mobile fitting
@@ -71,13 +77,12 @@ const LotteryBall: React.FC<LotteryBallProps> = ({
           transform transition-all duration-300 ease-out
           md:group-hover:scale-110 md:group-hover:-translate-y-1.5
           animate-pop-in cursor-default
+          ${delayClass}
         `}
-        style={{ animationDelay: `${delay * 60}ms`, animationFillMode: 'both' }}
       >
         {/* FLASH FILL EFFECT */}
         <div 
-            className={`absolute inset-0 rounded-full animate-flash-in ${getFlashColorClass()}`}
-            style={{ animationDelay: `${delay * 60}ms`, animationFillMode: 'both' }}
+            className={`absolute inset-0 rounded-full animate-flash-in ${getFlashColorClass()} ${delayClass}`}
         ></div>
 
         {/* Inner Glossy Gradient Overlays for 3D effect */}

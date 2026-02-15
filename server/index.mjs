@@ -976,8 +976,14 @@ const requireInternalKey = (req, res, next) => {
 app.get("/api/official-results", async (req, res) => {
   const forceRefresh = typeof req.query.force === "string" && req.query.force === "1";
   const includeDiagnostics = canExposeOfficialDiagnostics(req);
-  res.set("X-Official-Transport", "worker-proxy-v1");
-  res.set("X-Official-Caixa-Base-Origin", OFFICIAL_CAIXA_BASE_ORIGIN);
+  if (includeDiagnostics) {
+    // Only expose infra/provider details to authorized diagnostics requests.
+    res.set(
+      "X-Official-Transport",
+      OFFICIAL_CAIXA_BASE_ORIGIN === OFFICIAL_CAIXA_ORIGIN ? "caixa-direct-v1" : "worker-proxy-v1"
+    );
+    res.set("X-Official-Caixa-Base-Origin", OFFICIAL_CAIXA_BASE_ORIGIN);
+  }
 
   try {
     const results = await fetchAllOfficialResults({ forceRefresh });

@@ -1,0 +1,131 @@
+@import "tailwindcss";
+@config "./tailwind.config.cjs";
+
+.noise-texture {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.receipt-zigzag {
+  mask-image: radial-gradient(circle at 10px -5px, transparent 12px, black 13px);
+  mask-size: 20px 20px;
+  mask-repeat: repeat-x;
+  mask-position: bottom;
+  -webkit-mask-image: radial-gradient(circle at 10px -5px, transparent 12px, black 13px);
+  -webkit-mask-size: 20px 20px;
+  -webkit-mask-repeat: repeat-x;
+  -webkit-mask-position: bottom;
+}
+
+.anim-delay-0 { animation-delay: 0ms; animation-fill-mode: both; }
+.anim-delay-1 { animation-delay: 60ms; animation-fill-mode: both; }
+.anim-delay-2 { animation-delay: 120ms; animation-fill-mode: both; }
+.anim-delay-3 { animation-delay: 180ms; animation-fill-mode: both; }
+.anim-delay-4 { animation-delay: 240ms; animation-fill-mode: both; }
+.anim-delay-5 { animation-delay: 300ms; animation-fill-mode: both; }
+.anim-delay-6 { animation-delay: 360ms; animation-fill-mode: both; }
+.anim-delay-7 { animation-delay: 420ms; animation-fill-mode: both; }
+.anim-delay-8 { animation-delay: 480ms; animation-fill-mode: both; }
+.anim-delay-9 { animation-delay: 540ms; animation-fill-mode: both; }
+.anim-delay-10 { animation-delay: 600ms; animation-fill-mode: both; }
+.anim-delay-11 { animation-delay: 660ms; animation-fill-mode: both; }
+.anim-delay-12 { animation-delay: 720ms; animation-fill-mode: both; }
+.anim-delay-13 { animation-delay: 780ms; animation-fill-mode: both; }
+.anim-delay-14 { animation-delay: 840ms; animation-fill-mode: both; }
+.anim-delay-15 { animation-delay: 900ms; animation-fill-mode: both; }
+.anim-delay-16 { animation-delay: 960ms; animation-fill-mode: both; }
+.anim-delay-17 { animation-delay: 1020ms; animation-fill-mode: both; }
+.anim-delay-18 { animation-delay: 1080ms; animation-fill-mode: both; }
+.anim-delay-19 { animation-delay: 1140ms; animation-fill-mode: both; }
+.anim-delay-20 { animation-delay: 1200ms; animation-fill-mode: both; }
+.anim-delay-21 { animation-delay: 1260ms; animation-fill-mode: both; }
+.anim-delay-22 { animation-delay: 1320ms; animation-fill-mode: both; }
+.anim-delay-23 { animation-delay: 1380ms; animation-fill-mode: both; }
+.anim-delay-24 { animation-delay: 1440ms; animation-fill-mode: both; }
+.anim-delay-25 { animation-delay: 1500ms; animation-fill-mode: both; }
+.anim-delay-26 { animation-delay: 1560ms; animation-fill-mode: both; }
+.anim-delay-27 { animation-delay: 1620ms; animation-fill-mode: both; }
+.anim-delay-28 { animation-delay: 1680ms; animation-fill-mode: both; }
+.anim-delay-29 { animation-delay: 1740ms; animation-fill-mode: both; }
+.anim-delay-30 { animation-delay: 1800ms; animation-fill-mode: both; }
+.anim-delay-31 { animation-delay: 1860ms; animation-fill-mode: both; }
+.anim-delay-32 { animation-delay: 1920ms; animation-fill-mode: both; }
+.anim-delay-33 { animation-delay: 1980ms; animation-fill-mode: both; }
+.anim-delay-34 { animation-delay: 2040ms; animation-fill-mode: both; }
+.anim-delay-35 { animation-delay: 2100ms; animation-fill-mode: both; }
+.anim-delay-36 { animation-delay: 2160ms; animation-fill-mode: both; }
+.anim-delay-37 { animation-delay: 2220ms; animation-fill-mode: both; }
+.anim-delay-38 { animation-delay: 2280ms; animation-fill-mode: both; }
+.anim-delay-39 { animation-delay: 2340ms; animation-fill-mode: both; }
+.anim-delay-40 { animation-delay: 2400ms; animation-fill-mode: both; }
+.anim-delay-41 { animation-delay: 2460ms; animation-fill-mode: both; }
+.anim-delay-42 { animation-delay: 2520ms; animation-fill-mode: both; }
+.anim-delay-43 { animation-delay: 2580ms; animation-fill-mode: both; }
+.anim-delay-44 { animation-delay: 2640ms; animation-fill-mode: both; }
+.anim-delay-45 { animation-delay: 2700ms; animation-fill-mode: both; }
+.anim-delay-46 { animation-delay: 2760ms; animation-fill-mode: both; }
+.anim-delay-47 { animation-delay: 2820ms; animation-fill-mode: both; }
+.anim-delay-48 { animation-delay: 2880ms; animation-fill-mode: both; }
+.anim-delay-49 { animation-delay: 2940ms; animation-fill-mode: both; }
+.anim-delay-50 { animation-delay: 3000ms; animation-fill-mode: both; }
+.anim-delay-51 { animation-delay: 3060ms; animation-fill-mode: both; }
+.anim-delay-52 { animation-delay: 3120ms; animation-fill-mode: both; }
+.anim-delay-53 { animation-delay: 3180ms; animation-fill-mode: both; }
+.anim-delay-54 { animation-delay: 3240ms; animation-fill-mode: both; }
+.anim-delay-55 { animation-delay: 3300ms; animation-fill-mode: both; }
+.anim-delay-56 { animation-delay: 3360ms; animation-fill-mode: both; }
+.anim-delay-57 { animation-delay: 3420ms; animation-fill-mode: both; }
+.anim-delay-58 { animation-delay: 3480ms; animation-fill-mode: both; }
+.anim-delay-59 { animation-delay: 3540ms; animation-fill-mode: both; }
+.anim-delay-60 { animation-delay: 3600ms; animation-fill-mode: both; }
+
+body {
+  font-family: "Inter", sans-serif;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+html:not(.dark) .glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}

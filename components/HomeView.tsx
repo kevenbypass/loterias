@@ -63,7 +63,7 @@ const HomeView: React.FC<HomeViewProps> = ({
       <div className="flex flex-col items-center text-center mb-6 md:mb-12 w-full max-w-3xl mx-auto px-2 mt-8 md:mt-16">
           
           {/* Headline - Dark Text in Light Mode */}
-          <h1 className="text-3xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter mb-3 md:mb-4 leading-[1.1] animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <h1 className="text-3xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter mb-3 md:mb-4 leading-[1.1] animate-slide-up [animation-delay:100ms]">
             Sua aposta <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 dark:from-emerald-400 dark:via-teal-200 dark:to-emerald-400 bg-[length:200%_auto] animate-shine">
                 vencedora.
@@ -71,17 +71,17 @@ const HomeView: React.FC<HomeViewProps> = ({
           </h1>
 
           {/* Subheadline - Slate Text in Light Mode */}
-          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-lg max-w-xl mx-auto mb-6 md:mb-8 font-light leading-relaxed animate-slide-up hidden md:block" style={{ animationDelay: '200ms' }}>
+          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-lg max-w-xl mx-auto mb-6 md:mb-8 font-light leading-relaxed animate-slide-up [animation-delay:200ms] hidden md:block">
             Utilize nosso algoritmo proprietário para gerar combinações otimizadas baseadas em padrões históricos e aleatoriedade quântica.
           </p>
-          <p className="text-slate-600 dark:text-slate-400 text-xs max-w-xs mx-auto mb-6 font-light leading-relaxed animate-slide-up md:hidden" style={{ animationDelay: '200ms' }}>
+          <p className="text-slate-600 dark:text-slate-400 text-xs max-w-xs mx-auto mb-6 font-light leading-relaxed animate-slide-up [animation-delay:200ms] md:hidden">
             Algoritmo proprietário para combinações otimizadas.
           </p>
 
       </div>
 
       {/* 2. THE CONSOLE: Mobile-First Card - Light/Dark Adaptive */}
-      <div className="w-full max-w-3xl relative group md:perspective-1000 animate-slide-up" style={{ animationDelay: '400ms' }}>
+      <div className="w-full max-w-3xl relative group md:perspective-1000 animate-slide-up [animation-delay:400ms]">
           
           {/* Background Glow */}
           <div className="absolute -inset-1 bg-gradient-to-b from-emerald-500/20 to-blue-600/10 rounded-[2rem] blur-xl opacity-30 md:opacity-50 group-hover:opacity-70 transition duration-1000"></div>
@@ -173,7 +173,7 @@ const HomeView: React.FC<HomeViewProps> = ({
             <div className="p-6 md:p-12 flex flex-col items-center justify-center min-h-[250px] md:min-h-[300px] bg-slate-50 dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617] relative transition-colors duration-500">
                
                {/* Digital Grid Background - Adaptive Opacity */}
-               <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_100%,transparent_100%) pointer-events-none"></div>
+               <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_100%,transparent_100%)] pointer-events-none"></div>
 
                {generatedNumbers.length === 0 ? (
                   <div className="flex flex-col items-center text-center z-10 opacity-60">
@@ -210,7 +210,7 @@ const HomeView: React.FC<HomeViewProps> = ({
 
                       {/* Extras */}
                       {(specialNumbers.length > 0 || extraString) && (
-                         <div className="flex items-center flex-wrap justify-center gap-3 md:gap-4 py-2 md:py-3 px-4 md:px-6 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 backdrop-blur-sm animate-slide-up shadow-sm dark:shadow-none" style={{ animationDelay: '200ms' }}>
+                         <div className="flex items-center flex-wrap justify-center gap-3 md:gap-4 py-2 md:py-3 px-4 md:px-6 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 backdrop-blur-sm animate-slide-up [animation-delay:200ms] shadow-sm dark:shadow-none">
                              {specialNumbers.map((num, idx) => (
                                 <div key={idx} className="flex items-center gap-2">
                                     <span className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{selectedGame.specialRange?.label}:</span>

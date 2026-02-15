@@ -29,7 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDa
              <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[100px] mix-blend-screen"></div>
              
              {/* Noise Texture */}
-             <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+             <div className="absolute inset-0 noise-texture opacity-[0.03]"></div>
              
              {/* Grid overlay */}
              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
@@ -41,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDa
              <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-100/40 rounded-full blur-[80px] mix-blend-multiply"></div>
              
              {/* Light Noise */}
-             <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+             <div className="absolute inset-0 noise-texture opacity-[0.015]"></div>
              
              {/* Subtle Grid */}
              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)]"></div>
@@ -52,11 +52,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDa
       {/* Header - Native App Bar on Mobile / Floating Pill on Desktop */}
       <header className={`
         fixed z-50 flex items-center justify-between transition-all duration-500 ease-out
-        
-        /* Mobile: Top Docked, Full Width, Compact */
+
         top-0 left-0 right-0 w-full px-5 py-3 border-b shadow-sm backdrop-blur-xl
-        
-        /* Desktop: Floating, Pill, Larger Blur */
+
         md:top-6 md:left-1/2 md:-translate-x-1/2 md:max-w-5xl md:w-[calc(100%-3rem)] md:rounded-full md:border md:shadow-2xl md:px-6 md:py-3 md:backdrop-blur-3xl
         
         ${isDarkMode 
