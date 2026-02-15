@@ -950,6 +950,8 @@ const requireInternalKey = (req, res, next) => {
 app.get("/api/official-results", async (req, res) => {
   const forceRefresh = typeof req.query.force === "string" && req.query.force === "1";
   const includeDiagnostics = canExposeOfficialDiagnostics(req);
+  res.set("X-Official-Transport", "worker-proxy-v1");
+  res.set("X-Official-Caixa-Base-Origin", OFFICIAL_CAIXA_BASE_ORIGIN);
 
   try {
     const results = await fetchAllOfficialResults({ forceRefresh });
