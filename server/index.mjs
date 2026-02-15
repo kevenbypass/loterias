@@ -5,6 +5,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import https from "node:https";
+import zlib from "node:zlib";
 import { GoogleGenAI, Type } from "@google/genai";
 
 dotenv.config({ path: ".env.local" });
@@ -87,6 +88,15 @@ const OFFICIAL_REQUEST_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
 };
+const OFFICIAL_REQUEST_HEADERS_CAIXA = {
+  Referer: "https://loterias.caixa.gov.br/",
+  Origin: "https://loterias.caixa.gov.br",
+};
+const OFFICIAL_RESPONSE_PREVIEW_MAX = 180;
+const OFFICIAL_HTTP_AGENT = new https.Agent({
+  keepAlive: true,
+  maxSockets: 16,
+});
 
 const resolveAllowedOrigins = (raw) => {
   if (!raw) {
@@ -182,6 +192,7 @@ const officialResultsCache = {
   value: null,
   expiresAt: 0,
   source: "unknown",
+  diagnostics: null,
 };
 
 const formatCurrencyBRL = (value) => {
@@ -287,13 +298,127 @@ const mapOfficialHomeResponse = (gameId, data) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const requestOfficialJson = (url, timeoutMs) =>
+const isCaixaOfficialUrl = (url) => {
+  try {
+    return new URL(url).hostname === "servicebus2.caixa.gov.br";
+  } catch {
+    return false;
+  }
+};
+
+const getOfficialRequestHeaders = (url) =>
+  isCaixaOfficialUrl(url)
+    ? { ...OFFICIAL_REQUEST_HEADERS, ...OFFICIAL_REQUEST_HEADERS_CAIXA }
+    : { ...OFFICIAL_REQUEST_HEADERS };
+
+const safeTextPreview = (text) => {
+  if (typeof text !== "string") return "";
+  return text.replace(/\s+/g, " ").slice(0, OFFICIAL_RESPONSE_PREVIEW_MAX);
+};
+
+const createOfficialError = (message, details = {}) => {
+  const error = new Error(message);
+  Object.assign(error, details);
+  return error;
+};
+
+const summarizeOfficialError = (error) => {
+  const fallback = { message: "unknown_error" };
+  if (!error || typeof error !== "object") {
+    if (typeof error === "string") return { message: error };
+    return fallback;
+  }
+
+  const out = {
+    message: typeof error.message === "string" ? error.message : "unknown_error",
+  };
+
+  if (typeof error.code === "string") out.code = error.code;
+  if (typeof error.errno === "number") out.errno = error.errno;
+  if (typeof error.syscall === "string") out.syscall = error.syscall;
+  if (typeof error.status === "number") out.status = error.status;
+  if (typeof error.strategy === "string") out.strategy = error.strategy;
+  if (typeof error.contentType === "string" && error.contentType) out.contentType = error.contentType;
+  if (typeof error.preview === "string" && error.preview) out.preview = error.preview;
+  if (Array.isArray(error.attempts) && error.attempts.length) {
+    out.attempts = error.attempts.slice(0, 4);
+  }
+
+  return out;
+};
+
+const decodeCompressedBody = (bodyBuffer, contentEncoding) => {
+  const encoding = String(contentEncoding || "").toLowerCase();
+  if (!encoding || encoding === "identity") return bodyBuffer;
+  if (encoding.includes("gzip")) return zlib.gunzipSync(bodyBuffer);
+  if (encoding.includes("br")) return zlib.brotliDecompressSync(bodyBuffer);
+  if (encoding.includes("deflate")) return zlib.inflateSync(bodyBuffer);
+  return bodyBuffer;
+};
+
+const requestOfficialJsonViaFetch = async (url, timeoutMs) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getOfficialRequestHeaders(url),
+      redirect: "follow",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    const raw = await response.text();
+    if (!response.ok) {
+      throw createOfficialError(`official_api_http_${response.status}`, {
+        status: Number(response.status),
+        strategy: "fetch",
+        contentType: response.headers.get("content-type") || "",
+        preview: safeTextPreview(raw),
+      });
+    }
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      throw createOfficialError("official_api_invalid_json", {
+        strategy: "fetch",
+        status: Number(response.status),
+        contentType: response.headers.get("content-type") || "",
+        preview: safeTextPreview(raw),
+      });
+    }
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw createOfficialError("official_api_timeout", { strategy: "fetch" });
+    }
+
+    if (error && typeof error === "object" && typeof error.strategy === "string") {
+      throw error;
+    }
+
+    throw createOfficialError(error?.message || "official_api_fetch_failed", {
+      strategy: "fetch",
+      code: error?.code,
+      errno: error?.errno,
+      syscall: error?.syscall,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const requestOfficialJsonViaHttps = (url, timeoutMs) =>
   new Promise((resolve, reject) => {
     const req = https.request(
       url,
       {
         method: "GET",
-        headers: OFFICIAL_REQUEST_HEADERS,
+        headers: {
+          ...getOfficialRequestHeaders(url),
+          "Accept-Encoding": "gzip, deflate, br",
+        },
+        agent: OFFICIAL_HTTP_AGENT,
       },
       (res) => {
         const chunks = [];
@@ -304,26 +429,87 @@ const requestOfficialJson = (url, timeoutMs) =>
 
         res.on("end", () => {
           const status = Number(res.statusCode || 0);
-          const raw = Buffer.concat(chunks).toString("utf8");
+          const contentType = String(res.headers["content-type"] || "");
+          const contentEncoding = String(res.headers["content-encoding"] || "");
+          const rawBuffer = Buffer.concat(chunks);
+          let decodedBuffer = rawBuffer;
+
+          try {
+            decodedBuffer = decodeCompressedBody(rawBuffer, contentEncoding);
+          } catch {
+            reject(
+              createOfficialError("official_api_invalid_encoding", {
+                strategy: "https",
+                status,
+                contentType,
+              })
+            );
+            return;
+          }
+
+          const raw = decodedBuffer.toString("utf8");
 
           if (status < 200 || status >= 300) {
-            reject(new Error(`official_api_http_${status}`));
+            reject(
+              createOfficialError(`official_api_http_${status}`, {
+                strategy: "https",
+                status,
+                contentType,
+                preview: safeTextPreview(raw),
+              })
+            );
             return;
           }
 
           try {
             resolve(JSON.parse(raw));
           } catch {
-            reject(new Error("official_api_invalid_json"));
+            reject(
+              createOfficialError("official_api_invalid_json", {
+                strategy: "https",
+                status,
+                contentType,
+                preview: safeTextPreview(raw),
+              })
+            );
           }
         });
       }
     );
 
-    req.on("error", (error) => reject(error));
-    req.setTimeout(timeoutMs, () => req.destroy(new Error("official_api_timeout")));
+    req.on("error", (error) =>
+      reject(
+        createOfficialError(error?.message || "official_api_network_error", {
+          strategy: "https",
+          code: error?.code,
+          errno: error?.errno,
+          syscall: error?.syscall,
+        })
+      )
+    );
+    req.setTimeout(timeoutMs, () =>
+      req.destroy(createOfficialError("official_api_timeout", { strategy: "https" }))
+    );
     req.end();
   });
+
+const requestOfficialJson = async (url, timeoutMs) => {
+  const attempts = [];
+
+  try {
+    return await requestOfficialJsonViaFetch(url, timeoutMs);
+  } catch (error) {
+    attempts.push(summarizeOfficialError(error));
+  }
+
+  try {
+    return await requestOfficialJsonViaHttps(url, timeoutMs);
+  } catch (error) {
+    attempts.push(summarizeOfficialError(error));
+  }
+
+  throw createOfficialError("official_api_request_failed", { attempts });
+};
 
 const fetchOfficialGameResult = async (gameId) => {
   const slug = OFFICIAL_API_SLUGS[gameId];
@@ -411,6 +597,7 @@ const fetchAllOfficialResultsByGame = async (gameIds) => {
   }
 
   const results = [];
+  const errors = [];
   for (const entry of outcomes) {
     if (entry.outcome.status === "fulfilled" && entry.outcome.value) {
       results.push(entry.outcome.value);
@@ -418,16 +605,30 @@ const fetchAllOfficialResultsByGame = async (gameIds) => {
     }
 
     if (entry.outcome.status === "rejected") {
-      console.warn(`Official results failed for ${entry.gameId}:`, entry.outcome.reason);
+      const summary = summarizeOfficialError(entry.outcome.reason);
+      errors.push({ gameId: entry.gameId, error: summary });
+      console.warn(`Official results failed for ${entry.gameId}:`, summary);
     }
   }
 
-  return results;
+  return { results, errors };
 };
 
 const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
+  const diagnostics = {
+    startedAt: new Date().toISOString(),
+    forceRefresh,
+    cacheHit: false,
+    source: "unknown",
+    providers: {},
+  };
+
   const now = Date.now();
   if (!forceRefresh && officialResultsCache.value && now < officialResultsCache.expiresAt) {
+    diagnostics.cacheHit = true;
+    diagnostics.source = officialResultsCache.source || "unknown";
+    diagnostics.finishedAt = new Date().toISOString();
+    officialResultsCache.diagnostics = diagnostics;
     return officialResultsCache.value;
   }
 
@@ -437,9 +638,22 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
   try {
     results = await fetchAllOfficialResultsFromHome(gameIds);
     source = "caixa_home";
+    diagnostics.providers.caixa_home = { ok: true, count: results.length };
   } catch (error) {
-    console.warn("Official home endpoint failed; falling back to per-game endpoints:", error);
-    results = await fetchAllOfficialResultsByGame(gameIds);
+    const homeError = summarizeOfficialError(error);
+    diagnostics.providers.caixa_home = { ok: false, error: homeError };
+    console.warn("Official home endpoint failed; falling back to per-game endpoints:", homeError);
+
+    const perGame = await fetchAllOfficialResultsByGame(gameIds);
+    results = perGame.results;
+
+    diagnostics.providers.caixa_games = {
+      ok: perGame.results.length > 0,
+      count: perGame.results.length,
+      failed: perGame.errors.length,
+      errors: perGame.errors.slice(0, 6),
+    };
+
     if (results.length) {
       source = "caixa_games";
     }
@@ -449,22 +663,44 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
     try {
       results = await fetchAllOfficialResultsFromLookup(gameIds);
       source = "lottolookup";
+      diagnostics.providers.lottolookup = { ok: true, count: results.length };
     } catch (error) {
-      console.warn("Lookup fallback endpoint failed:", error);
+      const lookupError = summarizeOfficialError(error);
+      diagnostics.providers.lottolookup = { ok: false, error: lookupError };
+      console.warn("Lookup fallback endpoint failed:", lookupError);
     }
   }
 
   if (!results.length) {
-    throw new Error("official_results_unavailable");
+    diagnostics.finishedAt = new Date().toISOString();
+    const unavailableError = createOfficialError("official_results_unavailable", {
+      diagnostics,
+    });
+    throw unavailableError;
   }
 
   const orderIndex = new Map(gameIds.map((gameId, idx) => [gameId, idx]));
   results.sort((a, b) => (orderIndex.get(a.gameId) ?? 999) - (orderIndex.get(b.gameId) ?? 999));
 
+  diagnostics.source = source;
+  diagnostics.finishedAt = new Date().toISOString();
   officialResultsCache.value = results;
   officialResultsCache.expiresAt = Date.now() + OFFICIAL_RESULTS_TTL_MS;
   officialResultsCache.source = source;
+  officialResultsCache.diagnostics = diagnostics;
   return results;
+};
+
+const canExposeOfficialDiagnostics = (req) => {
+  if (!(typeof req.query.diagnostics === "string" && req.query.diagnostics === "1")) {
+    return false;
+  }
+
+  if (nodeEnv !== "production") return true;
+  if (!internalApiKey) return false;
+
+  const key = req.get("X-Internal-Key");
+  return Boolean(key) && key === internalApiKey;
 };
 
 const sanitizeGame = (rawGame) => {
@@ -676,17 +912,34 @@ const requireInternalKey = (req, res, next) => {
 
 app.get("/api/official-results", async (req, res) => {
   const forceRefresh = typeof req.query.force === "string" && req.query.force === "1";
+  const includeDiagnostics = canExposeOfficialDiagnostics(req);
 
   try {
     const results = await fetchAllOfficialResults({ forceRefresh });
-    res.json({
+    const payload = {
       updatedAt: new Date().toISOString(),
       source: officialResultsCache.source || "unknown",
       results,
-    });
+    };
+
+    if (includeDiagnostics) {
+      payload.diagnostics = officialResultsCache.diagnostics || null;
+    }
+
+    res.json(payload);
   } catch (error) {
-    console.error("Erro ao buscar resultados oficiais:", error);
-    res.status(502).json({ error: "official_results_unavailable" });
+    const diagnostics = error?.diagnostics || officialResultsCache.diagnostics || null;
+    console.error("Erro ao buscar resultados oficiais:", {
+      error: summarizeOfficialError(error),
+      diagnostics,
+    });
+
+    const payload = { error: "official_results_unavailable" };
+    if (includeDiagnostics && diagnostics) {
+      payload.diagnostics = diagnostics;
+    }
+
+    res.status(502).json(payload);
   }
 });
 
