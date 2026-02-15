@@ -12,11 +12,11 @@ Primary stack:
 
 ## Executive Summary
 
-Major risks reported (public Gemini usage + third-party Tailwind CDN + weakened CSP) were addressed:
+Major risks reported (third-party Tailwind CDN + weakened CSP + AI endpoint exposure/cost) were addressed:
 - The frontend no longer loads Tailwind via CDN and does not require `unsafe-inline`.
 - A strict CSP is enforced in production (while dev mode strips CSP to keep HMR working).
-- The backend protects `/api/interpret-dream` behind `X-Internal-Key` (plus rate limiting).
-- Official-results diagnostics and related infrastructure details are no longer exposed by default.
+- The "Sonhos IA" (Gemini) feature and its backend endpoint were removed, so it no longer consumes any AI API.
+- Official-results diagnostics and related infrastructure details are not exposed to clients.
 
 No repository-tracked secrets were found (only placeholders like `.env.example`).
 
@@ -32,28 +32,11 @@ None found in current code state.
 
 ### Medium
 
-#### 1) Internal key stored client-side (localStorage)
-
-- Rule ID: REACT-CONFIG-001 (secrets must not be in the client bundle; client storage is observable) / general best practice
-- Severity: Medium
-- Location:
-  - `services/geminiService.ts:35` reads `localStorage.getItem("lotosorte_internal_key")`
-  - `components/DreamView.tsx:173` writes to `localStorage.setItem("lotosorte_internal_key", ...)`
-- Evidence:
-  - The browser stores `X-Internal-Key` in `localStorage` and sends it on requests. (`services/geminiService.ts:51`)
-- Impact:
-  - If an attacker ever achieves XSS on your origin (or a malicious extension runs), they can read the internal key and use your AI endpoint.
-- Fix (recommended):
-  - Prefer **server-side auth** (login) for admin-only features, or use a short-lived token minted server-side.
-  - If you keep this model, prefer `sessionStorage` over `localStorage` (less persistent) and keep rate limits in place.
-- Mitigation:
-  - Keep CSP strict (already done) and avoid introducing HTML injection sinks.
-- False positive notes:
-  - This is only “security critical” if the internal key is intended to be secret. If it’s just an “admin convenience toggle”, risk is reduced but not zero.
+None found in current code state.
 
 ### Low
 
-#### 2) CSP delivered via meta tag (limitations)
+#### 1) CSP delivered via meta tag (limitations)
 
 - Rule ID: REACT-HEADERS-001 / REACT-CSP-001
 - Severity: Low
@@ -65,11 +48,11 @@ None found in current code state.
 - Fix (recommended):
   - If you want clickjacking protection and tighter control, set CSP and other headers at the edge (Render/Cloudflare) via **HTTP response headers**.
 
-#### 3) Rate limiting is per-instance (in-memory)
+#### 2) Rate limiting is per-instance (in-memory)
 
 - Rule ID: EXPRESS-AUTH-001 / general abuse controls
 - Severity: Low
-- Location: `server/index.mjs:940` (`express-rate-limit`)
+- Location: `server/index.mjs:725` (`express-rate-limit`)
 - Impact:
   - If you scale to multiple instances, attackers can bypass limits by spreading requests across instances/IPs.
 - Fix (recommended):
@@ -88,25 +71,22 @@ None found in current code state.
   - `index.css` (Tailwind v4 import + app custom CSS)
   - `postcss.config.cjs`, `tailwind.config.cjs`
 
-#### B) Internal key mismatch fixed (frontend now sends `X-Internal-Key`)
+#### B) Removed Sonhos IA (Gemini) integration
 
-- Location: `services/geminiService.ts:51`
 - Change:
-  - The frontend attaches `X-Internal-Key` when configured in the browser.
+  - Removed the `/api/interpret-dream` endpoint and all client UI for "Sonhos IA".
+  - Removed client-side internal key storage (`X-Internal-Key` in browser storage).
+  - Removed the `@google/genai` dependency from the project.
 
 #### C) Reduced information disclosure for official results
 
-- Location: `server/index.mjs:976`
+- Location: `server/index.mjs:735`
 - Change:
-  - Debug headers (`X-Official-*`) are only set for authorized diagnostics requests.
+  - Official-results diagnostics and debug headers are not exposed to clients.
 
 ## Notes / Operational Checklist (Production)
 
 - Render backend env vars:
-  - `GEMINI_API_KEY` set
-  - `INTERNAL_API_KEY` set
-  - `REQUIRE_INTERNAL_API_KEY=1`
   - `ALLOWED_ORIGINS` includes your frontend origin (`https://loterias-1.onrender.com`)
 - GitHub:
   - Do not commit `.env.local` (keep it ignored).
-

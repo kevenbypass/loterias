@@ -4,7 +4,7 @@
 
 # Loterias (frontend + backend seguro)
 
-Este projeto usa backend local/servidor para proteger `GEMINI_API_KEY` e evitar exposicao no navegador/app.
+Este projeto usa backend local/servidor para fornecer os endpoints da aplicacao (ex.: resultados oficiais) e aplicar controles de seguranca (CORS, headers, rate limit).
 
 ## Rodar local
 
@@ -13,12 +13,8 @@ Prerequisito: Node.js 20+
 1. Instalar dependencias:
    `npm install`
 2. Criar `.env.local` com base em `.env.example` e definir:
-   - `GEMINI_API_KEY=...`
    - `API_PORT=8787` (opcional)
    - `ALLOWED_ORIGINS=capacitor://localhost,http://localhost:3000,http://localhost,https://localhost` (somente origens explicitas; `*` e ignorado)
-   - `INTERNAL_API_KEY=` (obrigatoria em producao quando `REQUIRE_INTERNAL_API_KEY=1`)
-   - `REQUIRE_INTERNAL_API_KEY=1` (recomendado; exige `X-Internal-Key` no `/api/interpret-dream` em producao)
-   - `GEMINI_MODEL=gemini-2.0-flash` (opcional)
    - `OFFICIAL_RESULTS_TTL_MS=120000` (opcional; cache dos resultados oficiais no backend)
    - `OFFICIAL_API_TIMEOUT_MS=12000` (opcional; timeout de consulta da API oficial)
    - `OFFICIAL_CAIXA_BASE_URL=https://servicebus2.caixa.gov.br/portaldeloterias/api` (opcional; origem oficial direta da Caixa)
@@ -45,10 +41,7 @@ Crie 2 services no Render apontando para o mesmo repositorio:
    - Build Command: `npm install`
    - Start Command: `npm start`
    - Environment Variables:
-     - `GEMINI_API_KEY` = sua chave real
      - `ALLOWED_ORIGINS` = `capacitor://localhost,http://localhost:3000,http://localhost,https://localhost,https://SEU-FRONTEND.onrender.com` (nao usar `*`)
-     - `INTERNAL_API_KEY` = obrigatoria (com `REQUIRE_INTERNAL_API_KEY=1`)
-     - `REQUIRE_INTERNAL_API_KEY` = `1` (recomendado)
      - `OFFICIAL_RESULTS_TTL_MS` = opcional (default `120000`)
      - `OFFICIAL_API_TIMEOUT_MS` = opcional (default `12000`)
      - `OFFICIAL_CAIXA_BASE_URL` = opcional (default `https://servicebus2.caixa.gov.br/portaldeloterias/api`)

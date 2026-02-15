@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clover, Moon, Sun, Home, Bookmark, BarChart, Sparkles, Zap } from 'lucide-react';
+import { Clover, Moon, Sun, Home, Bookmark, BarChart, Zap } from 'lucide-react';
 import { ViewState } from '../types';
 import { NAV_ITEMS } from '../constants';
 
@@ -120,7 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDa
           : 'bg-white/90 border-slate-200 shadow-slate-200/50 ring-slate-200/50'}
       `}>
         {NAV_ITEMS.map((item) => {
-            const Icon = item.icon === 'Home' ? Home : item.icon === 'Bookmark' ? Bookmark : item.icon === 'Sparkles' ? Sparkles : BarChart;
+            const Icon = item.icon === 'Home' ? Home : item.icon === 'Bookmark' ? Bookmark : BarChart;
             const isActive = currentView === item.id;
             return (
               <button 

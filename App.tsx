@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { GAMES, MONTH_NAMES } from './constants';
 import { SavedGame, ViewState } from './types';
 import Layout from './components/Layout';
-import { ApiError, generateRandomNumbers, interpretDream } from './services/geminiService';
+import { generateRandomNumbers } from './services/lotteryNumberService';
 
 // Import newly refactored views
 import HomeView from './components/HomeView';
 import ResultsView from './components/ResultsView';
 import SavedView from './components/SavedView';
-import DreamView from './components/DreamView';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('home');
@@ -19,11 +18,9 @@ const App: React.FC = () => {
   const [generatedNumbers, setGeneratedNumbers] = useState<number[]>([]);
   const [specialNumbers, setSpecialNumbers] = useState<number[]>([]);
   const [extraString, setExtraString] = useState<string | undefined>(undefined);
-  const [lastGeneratedSource, setLastGeneratedSource] = useState<'random' | 'ai'>('random');
 
   const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [dreamText, setDreamText] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   
@@ -54,8 +51,6 @@ const App: React.FC = () => {
     const game = GAMES.find(g => g.id === selectedGameId);
     if (game) {
       setNumCount(game.defaultCount);
-      // We do NOT clear generated numbers here automatically if it was set by dream interpretation
-      // Logic handled in handlers
     }
   }, [selectedGameId]);
 
@@ -83,7 +78,6 @@ const App: React.FC = () => {
     setIsGenerating(true);
     // Simulate slight delay for effect
     await new Promise(resolve => setTimeout(resolve, 600));
-    setLastGeneratedSource('random');
     
     // Generate Main Numbers
     const numbers = generateRandomNumbers(numCount, selectedGame.minNumber, selectedGame.maxNumber, [], selectedGame.allowRepeats);
@@ -113,54 +107,6 @@ const App: React.FC = () => {
     setIsGenerating(false);
   };
 
-  // Now accepts targetGameId from DreamView selector
-  const handleDreamInterpret = async (targetGameId: string) => {
-    if (!dreamText.trim()) return;
-    
-    setIsGenerating(true);
-    
-    // Find the requested game definition
-    const targetGame = GAMES.find(g => g.id === targetGameId) || GAMES[0];
-    
-    try {
-      // Call AI with the game chosen in Dream View (not necessarily the current Home game)
-      const result = await interpretDream(dreamText, targetGame);
-      setLastGeneratedSource('ai');
-      
-      // Update global state to match the Dream choice
-      // This ensures when we switch to 'home', the board renders the correct game type
-      setSelectedGameId(targetGameId);
-      
-      setGeneratedNumbers(result.main);
-      setSpecialNumbers(result.special);
-      setExtraString(result.extraString);
-      
-      triggerToast(`Palpite gerado para ${targetGame.name}!`);
-      setCurrentView('home'); 
-      
-    } catch (e) {
-      let msg = "Erro ao interpretar sonho. Tente novamente.";
-
-      if (e instanceof ApiError) {
-        if (e.status === 401) {
-          msg = "Acesso negado. Abra 'Acesso (admin)' e cole a chave interna para liberar o Sonhos IA.";
-        } else if (e.code === "missing_gemini_api_key") {
-          msg = "IA indisponível: configure GEMINI_API_KEY no backend.";
-        } else if (e.code === "gemini_request_failed") {
-          msg = "IA indisponível: Gemini falhou. Verifique a GEMINI_API_KEY no backend.";
-        } else if (e.code === "too_many_requests_ai") {
-          msg = "Muitas requisições. Aguarde um minuto e tente novamente.";
-        } else if (typeof e.code === "string" && e.code) {
-          msg = `Erro: ${e.code}`;
-        }
-      }
-
-      triggerToast(msg);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const copyToClipboard = (textToCopy?: string) => {
     let text = textToCopy;
     
@@ -188,15 +134,12 @@ const App: React.FC = () => {
       numbers: generatedNumbers,
       specialNumbers: specialNumbers.length > 0 ? specialNumbers : undefined,
       extraString: extraString,
-      date: new Date().toLocaleDateString('pt-BR'),
-      source: lastGeneratedSource,
-      note: lastGeneratedSource === 'ai' ? dreamText || undefined : undefined
+      date: new Date().toLocaleDateString('pt-BR')
     };
     const updated = [newSave, ...savedGames];
     setSavedGames(updated);
     localStorage.setItem('lotosorte_saved', JSON.stringify(updated));
     triggerToast("Jogo salvo com sucesso!");
-    if (lastGeneratedSource === 'ai') setDreamText('');
   };
 
   const deleteSavedGame = (id: string) => {
@@ -244,16 +187,6 @@ const App: React.FC = () => {
           savedGames={savedGames}
           onDelete={deleteSavedGame}
           onCopy={copyToClipboard}
-        />
-      )}
-
-      {currentView === 'dream' && (
-        <DreamView 
-            dreamText={dreamText}
-            setDreamText={setDreamText}
-            onInterpret={handleDreamInterpret}
-            isGenerating={isGenerating}
-            selectedGame={selectedGame}
         />
       )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Bookmark, Copy, Trash2, Wand2, Shield, Plus } from 'lucide-react';
-import { SavedGame, LotteryGame } from '../types';
+import { Bookmark, Copy, Trash2, Shield } from 'lucide-react';
+import { SavedGame } from '../types';
 import { GAMES, MONTH_NAMES } from '../constants';
 
 interface SavedViewProps {
@@ -47,18 +47,7 @@ const SavedView: React.FC<SavedViewProps> = ({ savedGames, onDelete, onCopy }) =
                             {gameDef?.name}
                         </span>
                         <span className="text-xs text-slate-400 font-mono">{game.date}</span>
-                        {game.source === 'ai' && (
-                            <span className="flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
-                                <Wand2 size={10} /> Sonho IA
-                            </span>
-                        )}
                     </div>
-
-                    {game.note && (
-                        <p className="mb-3 text-sm italic text-slate-500 dark:text-slate-400 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
-                            "{game.note}"
-                        </p>
-                    )}
 
                     {/* Numbers */}
                     <div className="flex flex-wrap items-center gap-2">

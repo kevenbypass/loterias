@@ -28,8 +28,6 @@ export interface SavedGame {
   specialNumbers?: number[]; // For secondary ranges (Trevos, Mês numeric)
   extraString?: string; // For text based picks (Time do Coração)
   date: string;
-  source: 'random' | 'ai';
-  note?: string; 
 }
 
 export interface LotteryResult {
@@ -44,4 +42,4 @@ export interface LotteryResult {
   nextDate: string;
 }
 
-export type ViewState = 'home' | 'saved' | 'results' | 'dream';
+export type ViewState = 'home' | 'saved' | 'results';
