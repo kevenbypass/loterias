@@ -1,0 +1,7 @@
+name = "loterias-caixa-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-02-15"
+
+[vars]
+UPSTREAM_BASE_URL = "https://servicebus2.caixa.gov.br"
+REQUEST_TIMEOUT_MS = "12000"

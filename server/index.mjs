@@ -27,9 +27,29 @@ const MAX_CACHE_ITEMS = Number(process.env.DREAM_CACHE_MAX_ITEMS || 500);
 const OFFICIAL_API_TIMEOUT_MS = Number(process.env.OFFICIAL_API_TIMEOUT_MS || 12000);
 const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 * 60 * 1000);
 
-const OFFICIAL_API_BASE_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api";
+const normalizeOfficialBaseUrl = (raw, fallback) => {
+  const candidate = typeof raw === "string" ? raw.trim() : "";
+  const base = candidate || fallback;
+  return base.replace(/\/+$/, "");
+};
+
+const OFFICIAL_CAIXA_DEFAULT_BASE_URL =
+  "https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api";
+const OFFICIAL_API_BASE_URL = normalizeOfficialBaseUrl(
+  process.env.OFFICIAL_CAIXA_BASE_URL,
+  OFFICIAL_CAIXA_DEFAULT_BASE_URL
+);
+const OFFICIAL_CAIXA_PROXY_KEY = (process.env.OFFICIAL_CAIXA_PROXY_KEY || "").trim();
 const OFFICIAL_API_HOME_URL = `${OFFICIAL_API_BASE_URL}/home/ultimos-resultados`;
 const OFFICIAL_LOOKUP_URL = "https://lottolookup.com.br/api";
+const OFFICIAL_CAIXA_ORIGIN = "https://servicebus2.caixa.gov.br";
+const OFFICIAL_CAIXA_BASE_ORIGIN = (() => {
+  try {
+    return new URL(OFFICIAL_API_BASE_URL).origin;
+  } catch {
+    return OFFICIAL_CAIXA_ORIGIN;
+  }
+})();
 const OFFICIAL_API_SLUGS = {
   "mega-sena": "megasena",
   lotofacil: "lotofacil",
@@ -306,10 +326,27 @@ const isCaixaOfficialUrl = (url) => {
   }
 };
 
-const getOfficialRequestHeaders = (url) =>
-  isCaixaOfficialUrl(url)
+const isOfficialProxyUrl = (url) => {
+  try {
+    if (!OFFICIAL_CAIXA_PROXY_KEY) return false;
+    const parsed = new URL(url);
+    return parsed.origin === OFFICIAL_CAIXA_BASE_ORIGIN && parsed.origin !== OFFICIAL_CAIXA_ORIGIN;
+  } catch {
+    return false;
+  }
+};
+
+const getOfficialRequestHeaders = (url) => {
+  const headers = isCaixaOfficialUrl(url)
     ? { ...OFFICIAL_REQUEST_HEADERS, ...OFFICIAL_REQUEST_HEADERS_CAIXA }
     : { ...OFFICIAL_REQUEST_HEADERS };
+
+  if (isOfficialProxyUrl(url)) {
+    headers["X-Proxy-Key"] = OFFICIAL_CAIXA_PROXY_KEY;
+  }
+
+  return headers;
+};
 
 const safeTextPreview = (text) => {
   if (typeof text !== "string") return "";

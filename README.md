@@ -20,6 +20,8 @@ Prerequisito: Node.js 20+
    - `GEMINI_MODEL=gemini-2.0-flash` (opcional)
    - `OFFICIAL_RESULTS_TTL_MS=120000` (opcional; cache dos resultados oficiais no backend)
    - `OFFICIAL_API_TIMEOUT_MS=12000` (opcional; timeout de consulta da API oficial)
+   - `OFFICIAL_CAIXA_BASE_URL=https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api` (opcional; usa proxy da Caixa por padrao)
+   - `OFFICIAL_CAIXA_PROXY_KEY=` (opcional; chave para autenticar no proxy Cloudflare)
    - `VITE_API_BASE_URL=` (deixe vazio para usar proxy local do Vite)
 3. Rodar frontend + backend:
    `npm run dev`
@@ -47,11 +49,34 @@ Crie 2 services no Render apontando para o mesmo repositorio:
      - `INTERNAL_API_KEY` = opcional para bloquear bots sem chave interna
      - `OFFICIAL_RESULTS_TTL_MS` = opcional (default `120000`)
      - `OFFICIAL_API_TIMEOUT_MS` = opcional (default `12000`)
+     - `OFFICIAL_CAIXA_BASE_URL` = opcional (default `https://loterias-caixa-proxy.keven-loterias.workers.dev/portaldeloterias/api`)
+     - `OFFICIAL_CAIXA_PROXY_KEY` = opcional (se usar Cloudflare Worker com chave)
 
 Depois de publicar o backend, pegue a URL (ex.: `https://loterias-api.onrender.com`) e coloque no build mobile/local:
 
 - `.env.local`:
   - `VITE_API_BASE_URL=https://loterias-api.onrender.com`
+
+## Proxy oficial da Caixa (Cloudflare Worker)
+
+Use se o backend no Render estiver caindo direto para `lottolookup` por bloqueio/rede na Caixa.
+
+Arquivos do proxy:
+- `cloudflare/caixa-official-proxy/wrangler.toml`
+- `cloudflare/caixa-official-proxy/src/index.ts`
+
+Passos:
+1. Login no Cloudflare:
+   `npx wrangler login`
+2. Deploy do Worker:
+   `npx wrangler deploy --config cloudflare/caixa-official-proxy/wrangler.toml`
+3. (Recomendado) Definir segredo no Worker:
+   `npx wrangler secret put PROXY_KEY --config cloudflare/caixa-official-proxy/wrangler.toml`
+4. Configurar no backend Render:
+   - `OFFICIAL_CAIXA_BASE_URL=https://SEU-WORKER.workers.dev/portaldeloterias/api`
+   - `OFFICIAL_CAIXA_PROXY_KEY=mesmo_valor_do_PROXY_KEY`
+5. Forcar teste:
+   `GET /api/official-results?force=1`
 
 ## Scripts
 
