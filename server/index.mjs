@@ -27,6 +27,7 @@ const OFFICIAL_API_TIMEOUT_MS = Number(process.env.OFFICIAL_API_TIMEOUT_MS || 12
 const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 * 60 * 1000);
 
 const OFFICIAL_API_BASE_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api";
+const OFFICIAL_API_HOME_URL = `${OFFICIAL_API_BASE_URL}/home/ultimos-resultados`;
 const OFFICIAL_API_SLUGS = {
   "mega-sena": "megasena",
   lotofacil: "lotofacil",
@@ -37,6 +38,18 @@ const OFFICIAL_API_SLUGS = {
   "dia-de-sorte": "diadesorte",
   "super-sete": "supersete",
   milionaria: "maismilionaria",
+  federal: "federal",
+};
+const OFFICIAL_HOME_KEYS = {
+  "mega-sena": "megasena",
+  lotofacil: "lotofacil",
+  quina: "quina",
+  lotomania: "lotomania",
+  timemania: "timemania",
+  "dupla-sena": "duplasena",
+  "dia-de-sorte": "diaDeSorte",
+  "super-sete": "superSete",
+  milionaria: "maisMilionaria",
   federal: "federal",
 };
 
@@ -224,6 +237,40 @@ const mapOfficialApiResponse = (gameId, data) => {
   };
 };
 
+const mapOfficialHomeResponse = (gameId, data) => {
+  const numbers = parseNumericList(data?.dezenas);
+  if (!numbers.length) return null;
+
+  let specialNumbers;
+  let extraString;
+
+  if (gameId === "milionaria") {
+    const trevos = parseNumericList(data?.trevosSorteados);
+    if (trevos.length) specialNumbers = trevos;
+  }
+
+  if (gameId === "dia-de-sorte") {
+    const monthNumber = monthNameToNumber(data?.mesDaSorte);
+    if (monthNumber) specialNumbers = [monthNumber];
+  }
+
+  if (gameId === "timemania" && typeof data?.timeDoCoracao === "string") {
+    extraString = data.timeDoCoracao.trim() || undefined;
+  }
+
+  return {
+    gameId,
+    contestNumber: String(data?.numeroDoConcurso ?? ""),
+    date: typeof data?.dataApuracao === "string" ? data.dataApuracao : "",
+    numbers,
+    specialNumbers,
+    extraString,
+    accumulated: Boolean(data?.acumulado),
+    nextPrize: formatCurrencyBRL(data?.valorEstimadoProximoConcurso),
+    nextDate: typeof data?.dataProximoConcurso === "string" ? data.dataProximoConcurso : "",
+  };
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const requestOfficialJson = (url, timeoutMs) =>
@@ -291,13 +338,30 @@ const fetchOfficialGameResult = async (gameId) => {
   throw lastError || new Error("official_api_request_failed");
 };
 
-const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
-  const now = Date.now();
-  if (!forceRefresh && officialResultsCache.value && now < officialResultsCache.expiresAt) {
-    return officialResultsCache.value;
+const fetchAllOfficialResultsFromHome = async (gameIds) => {
+  const payload = await requestOfficialJson(OFFICIAL_API_HOME_URL, OFFICIAL_API_TIMEOUT_MS);
+  if (!payload || typeof payload !== "object") {
+    throw new Error("official_home_invalid_payload");
   }
 
-  const gameIds = Object.keys(OFFICIAL_API_SLUGS);
+  const results = [];
+  for (const gameId of gameIds) {
+    const homeKey = OFFICIAL_HOME_KEYS[gameId];
+    const entry = payload?.[homeKey];
+    if (!entry || typeof entry !== "object") continue;
+
+    const mapped = mapOfficialHomeResponse(gameId, entry);
+    if (mapped) results.push(mapped);
+  }
+
+  if (!results.length) {
+    throw new Error("official_home_empty");
+  }
+
+  return results;
+};
+
+const fetchAllOfficialResultsByGame = async (gameIds) => {
   const outcomes = [];
   const BATCH_SIZE = 3;
 
@@ -319,6 +383,24 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
     if (entry.outcome.status === "rejected") {
       console.warn(`Official results failed for ${entry.gameId}:`, entry.outcome.reason);
     }
+  }
+
+  return results;
+};
+
+const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
+  const now = Date.now();
+  if (!forceRefresh && officialResultsCache.value && now < officialResultsCache.expiresAt) {
+    return officialResultsCache.value;
+  }
+
+  const gameIds = Object.keys(OFFICIAL_API_SLUGS);
+  let results = [];
+  try {
+    results = await fetchAllOfficialResultsFromHome(gameIds);
+  } catch (error) {
+    console.warn("Official home endpoint failed; falling back to per-game endpoints:", error);
+    results = await fetchAllOfficialResultsByGame(gameIds);
   }
 
   if (!results.length) {
