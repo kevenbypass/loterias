@@ -27,17 +27,12 @@ const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   
   // Theme State
-  const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Initialize Theme
-  useEffect(() => {
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const storedTheme = localStorage.getItem('lotosorte_theme');
-    if (storedTheme) {
-      setIsDarkMode(storedTheme === 'dark');
-    } else {
-      setIsDarkMode(true);
-    }
-  }, []);
+    if (storedTheme === 'dark') return true;
+    if (storedTheme === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   // Update DOM when theme changes
   useEffect(() => {
