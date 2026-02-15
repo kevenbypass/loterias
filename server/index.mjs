@@ -4,6 +4,7 @@ import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
+import https from "node:https";
 import { GoogleGenAI, Type } from "@google/genai";
 
 dotenv.config({ path: ".env.local" });
@@ -53,6 +54,13 @@ const MONTH_NAMES_PT = [
   "Novembro",
   "Dezembro",
 ];
+
+const OFFICIAL_REQUEST_HEADERS = {
+  Accept: "application/json",
+  "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+};
 
 const resolveAllowedOrigins = (raw) => {
   if (!raw) {
@@ -216,34 +224,71 @@ const mapOfficialApiResponse = (gameId, data) => {
   };
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const requestOfficialJson = (url, timeoutMs) =>
+  new Promise((resolve, reject) => {
+    const req = https.request(
+      url,
+      {
+        method: "GET",
+        headers: OFFICIAL_REQUEST_HEADERS,
+      },
+      (res) => {
+        const chunks = [];
+
+        res.on("data", (chunk) => {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+
+        res.on("end", () => {
+          const status = Number(res.statusCode || 0);
+          const raw = Buffer.concat(chunks).toString("utf8");
+
+          if (status < 200 || status >= 300) {
+            reject(new Error(`official_api_http_${status}`));
+            return;
+          }
+
+          try {
+            resolve(JSON.parse(raw));
+          } catch {
+            reject(new Error("official_api_invalid_json"));
+          }
+        });
+      }
+    );
+
+    req.on("error", (error) => reject(error));
+    req.setTimeout(timeoutMs, () => req.destroy(new Error("official_api_timeout")));
+    req.end();
+  });
+
 const fetchOfficialGameResult = async (gameId) => {
   const slug = OFFICIAL_API_SLUGS[gameId];
   if (!slug) return null;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), OFFICIAL_API_TIMEOUT_MS);
+  const url = `${OFFICIAL_API_BASE_URL}/${slug}`;
+  let lastError = null;
 
-  try {
-    const response = await fetch(`${OFFICIAL_API_BASE_URL}/${slug}`, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const payload = await requestOfficialJson(url, OFFICIAL_API_TIMEOUT_MS);
+      const mapped = mapOfficialApiResponse(gameId, payload);
+      if (!mapped) {
+        throw new Error("official_api_invalid_payload");
+      }
 
-    if (!response.ok) {
-      throw new Error(`official_api_http_${response.status}`);
+      return mapped;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) {
+        await sleep(200 * attempt);
+      }
     }
-
-    const payload = await response.json();
-    const mapped = mapOfficialApiResponse(gameId, payload);
-    if (!mapped) {
-      throw new Error("official_api_invalid_payload");
-    }
-
-    return mapped;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  throw lastError || new Error("official_api_request_failed");
 };
 
 const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
@@ -253,17 +298,26 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
   }
 
   const gameIds = Object.keys(OFFICIAL_API_SLUGS);
-  const settled = await Promise.allSettled(gameIds.map((gameId) => fetchOfficialGameResult(gameId)));
+  const outcomes = [];
+  const BATCH_SIZE = 3;
+
+  for (let i = 0; i < gameIds.length; i += BATCH_SIZE) {
+    const batch = gameIds.slice(i, i + BATCH_SIZE);
+    const settled = await Promise.allSettled(batch.map((gameId) => fetchOfficialGameResult(gameId)));
+    settled.forEach((outcome, idx) => {
+      outcomes.push({ gameId: batch[idx], outcome });
+    });
+  }
 
   const results = [];
-  for (const outcome of settled) {
-    if (outcome.status === "fulfilled" && outcome.value) {
-      results.push(outcome.value);
+  for (const entry of outcomes) {
+    if (entry.outcome.status === "fulfilled" && entry.outcome.value) {
+      results.push(entry.outcome.value);
       continue;
     }
 
-    if (outcome.status === "rejected") {
-      console.warn("Official results provider failed:", outcome.reason);
+    if (entry.outcome.status === "rejected") {
+      console.warn(`Official results failed for ${entry.gameId}:`, entry.outcome.reason);
     }
   }
 
