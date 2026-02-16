@@ -1,6 +1,8 @@
 import { LotteryResult } from "../types";
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+const FALLBACK_PROD_API_BASE_URL = "https://loterias-jrky.onrender.com";
+const rawBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+const apiBaseUrl = (rawBaseUrl || (import.meta.env.PROD ? FALLBACK_PROD_API_BASE_URL : "")).replace(/\/+$/, "");
 const apiUrl = (path: string) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
 
 interface BackendOfficialResultsResponse {

@@ -13,132 +13,113 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDarkMode, toggleTheme }) => {
   return (
-    <div className={`
-      min-h-screen flex flex-col relative overflow-hidden transition-colors duration-500 font-sans selection:bg-emerald-500/30 selection:text-emerald-800 dark:selection:text-emerald-200
-      ${isDarkMode 
-        ? 'bg-[#020617] text-slate-100' 
-        : 'bg-[#FDFDFD] text-slate-900'}
-    `}>
-      
-      {/* Premium Background Layer */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-         {isDarkMode ? (
-           <>
-             {/* Deep Mesh Gradient - Optimized for Mobile (less opacity) */}
-             <div className="absolute top-[-20%] left-[20%] w-[800px] h-[800px] bg-emerald-900/20 rounded-full blur-[120px] mix-blend-screen animate-pulse duration-[10000ms]"></div>
-             <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[100px] mix-blend-screen"></div>
-             
-             {/* Noise Texture */}
-             <div className="absolute inset-0 noise-texture opacity-[0.03]"></div>
-             
-             {/* Grid overlay */}
-             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
-           </>
-         ) : (
-           <>
-             {/* Light Mode subtle gradients */}
-             <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-emerald-100/40 rounded-full blur-[80px] mix-blend-multiply"></div>
-             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-100/40 rounded-full blur-[80px] mix-blend-multiply"></div>
-             
-             {/* Light Noise */}
-             <div className="absolute inset-0 noise-texture opacity-[0.015]"></div>
-             
-             {/* Subtle Grid */}
-             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)]"></div>
-           </>
-         )}
+    <div className="min-h-screen flex flex-col relative overflow-hidden font-sans text-[color:var(--ink)] selection:bg-emerald-500/25 selection:text-emerald-950 dark:selection:text-emerald-100">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(1100px_circle_at_18%_10%,var(--glow-brand),transparent_55%),radial-gradient(900px_circle_at_82%_18%,var(--glow-gold),transparent_60%),linear-gradient(180deg,var(--bg0),var(--bg1))]" />
+        <div className="absolute inset-0 clover-pattern opacity-[0.16] dark:opacity-[0.10]" />
+        <div className="absolute inset-0 noise-texture opacity-[0.035] dark:opacity-[0.04]" />
       </div>
 
-      {/* Header - Native App Bar on Mobile / Floating Pill on Desktop */}
-      <header className={`
-        fixed z-50 flex items-center justify-between transition-all duration-500 ease-out
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50">
+        <div className="mx-auto max-w-5xl px-4 pt-4 md:pt-6">
+          <div className="ticket-cut relative flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4 backdrop-blur-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_22px_60px_-30px_var(--shadow)]">
+            <button
+              type="button"
+              className="flex items-center gap-3 group active:scale-[0.98] transition-transform"
+              onClick={() => onNavigate('home')}
+            >
+              <span className="relative inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-400 to-teal-300 shadow-[0_12px_30px_-18px_rgba(16,185,129,0.9)]">
+                <Clover size={18} className="text-emerald-950/90" />
+                <span className="absolute inset-0 rounded-2xl ring-1 ring-white/30 dark:ring-white/10" />
+              </span>
+              <span className="leading-tight text-left">
+                <span className="block text-[15px] md:text-base font-black tracking-tight font-display">
+                  Loto<span className="text-emerald-600 dark:text-emerald-400">Sorte</span>
+                </span>
+                <span className="hidden md:block text-[11px] font-semibold tracking-wide text-[color:var(--muted)]">
+                  Trevo, bilhetes e palpites
+                </span>
+              </span>
+            </button>
 
-        top-0 left-0 right-0 w-full px-5 py-3 border-b shadow-sm backdrop-blur-xl
+            {/* Desktop nav */}
+            <nav className="hidden md:flex items-center gap-1 rounded-full p-1 bg-[color:var(--surface-2)] border border-[color:var(--border)]">
+              {NAV_ITEMS.map((item) => {
+                const isActive = currentView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onNavigate(item.id as ViewState)}
+                    className={[
+                      "relative px-4 py-2 rounded-full text-sm font-bold tracking-tight transition-all",
+                      isActive
+                        ? "text-white bg-gradient-to-r from-emerald-600 to-teal-500 shadow-[0_14px_34px_-18px_rgba(16,185,129,0.85)]"
+                        : "text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-black/5 dark:hover:bg-white/5",
+                    ].join(" ")}
+                  >
+                    <span className="relative z-10">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
 
-        md:top-6 md:left-1/2 md:-translate-x-1/2 md:max-w-5xl md:w-[calc(100%-3rem)] md:rounded-full md:border md:shadow-2xl md:px-6 md:py-3 md:backdrop-blur-3xl
-        
-        ${isDarkMode 
-          ? 'bg-[#0f172a]/80 md:bg-[#0f172a]/60 border-white/5 shadow-black/5 md:shadow-black/20' 
-          : 'bg-white/80 md:bg-white/60 border-slate-200 shadow-slate-200/50 md:shadow-slate-200/30'}
-      `}>
-        <div 
-          className="flex items-center gap-2 cursor-pointer group active:scale-95 transition-transform"
-          onClick={() => onNavigate('home')}
-        >
-          <div className="relative">
-             <div className="absolute inset-0 bg-emerald-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>
-             <Clover className={`relative w-6 h-6 md:w-6 md:h-6 text-emerald-600 dark:text-emerald-400`} />
+            {/* Actions */}
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-full bg-[color:var(--surface-2)] border border-[color:var(--border)] text-[11px] font-extrabold tracking-wide text-emerald-700 dark:text-emerald-300">
+                <Zap size={14} className="text-emerald-600 dark:text-emerald-400" />
+                <span>Verde Trevo</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="relative p-2.5 rounded-2xl bg-[color:var(--surface-2)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                aria-label={isDarkMode ? "Alternar para modo claro" : "Alternar para modo escuro"}
+              >
+                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+            </div>
           </div>
-          <span className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-            Loto<span className="text-emerald-600 dark:text-emerald-500">Sorte</span>
-          </span>
-        </div>
-
-        {/* Desktop Nav */}
-        <nav className={`hidden md:flex items-center gap-1 p-1 rounded-full border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-100/50 border-slate-200'}`}>
-          {NAV_ITEMS.map((item) => (
-             <button 
-               key={item.id}
-               onClick={() => onNavigate(item.id as ViewState)}
-               className={`
-                 px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-300
-                 ${currentView === item.id 
-                   ? `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] border border-emerald-500/20` 
-                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5'}
-               `}
-             >
-               {item.label}
-             </button>
-          ))}
-        </nav>
-
-        {/* Right Actions */}
-        <div className="flex items-center gap-3">
-           <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${isDarkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
-              <Zap size={12} fill="currentColor" />
-              <span>Pro</span>
-           </div>
-          <button 
-            onClick={toggleTheme}
-            className={`p-2 rounded-full transition-colors active:bg-black/5 dark:active:bg-white/10 ${isDarkMode ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-          >
-             {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
         </div>
       </header>
 
-      {/* Main Content - Adjusted Padding for Mobile vs Desktop */}
-      <main className="flex-1 flex flex-col relative z-10 pt-24 md:pt-36 pb-28 md:pb-12 max-w-5xl mx-auto w-full px-4 md:px-6">
+      {/* Main */}
+      <main className="flex-1 flex flex-col relative pt-28 md:pt-44 pb-28 md:pb-14 mx-auto max-w-5xl w-full px-4 md:px-6">
         {children}
       </main>
 
-      {/* Mobile Bottom Nav - Glassmorphism Dock */}
-      <nav className={`
-        md:hidden fixed bottom-6 left-4 right-4 flex justify-between items-center px-2 py-2 z-50 rounded-2xl border backdrop-blur-2xl shadow-2xl ring-1 
-        ${isDarkMode 
-          ? 'bg-[#0f172a]/90 border-white/10 shadow-black/40 ring-white/5' 
-          : 'bg-white/90 border-slate-200 shadow-slate-200/50 ring-slate-200/50'}
-      `}>
-        {NAV_ITEMS.map((item) => {
+      {/* Mobile nav */}
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50">
+        <div className="ticket-cut flex items-center justify-between gap-2 px-2 py-2 backdrop-blur-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_20px_56px_-28px_var(--shadow)]">
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon === 'Home' ? Home : item.icon === 'Bookmark' ? Bookmark : BarChart;
             const isActive = currentView === item.id;
             return (
-              <button 
+              <button
                 key={item.id}
+                type="button"
                 onClick={() => onNavigate(item.id as ViewState)}
-                className="flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-300 group active:scale-90"
+                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-1 active:scale-[0.98] transition-transform"
               >
-                <div className={`
-                  p-2.5 rounded-xl transition-all duration-300
-                  ${isActive 
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 translate-y-[-6px]' 
-                    : 'text-slate-400 dark:text-slate-400'}
-                `}>
-                  <Icon size={20} strokeWidth={2} />
-                </div>
+                <span
+                  className={[
+                    "inline-flex items-center justify-center w-11 h-11 rounded-2xl transition-all",
+                    isActive
+                      ? "bg-gradient-to-br from-emerald-600 to-teal-500 text-white shadow-[0_16px_40px_-22px_rgba(16,185,129,0.9)]"
+                      : "bg-[color:var(--surface-2)] border border-[color:var(--border)] text-[color:var(--muted)]",
+                  ].join(" ")}
+                >
+                  <Icon size={20} strokeWidth={2.25} />
+                </span>
+                <span className={["text-[10px] font-extrabold tracking-wide", isActive ? "text-[color:var(--ink)]" : "text-[color:var(--muted)]"].join(" ")}>
+                  {item.label}
+                </span>
               </button>
-            )
-        })}
+            );
+          })}
+        </div>
       </nav>
     </div>
   );

@@ -1,8 +1,71 @@
 @import "tailwindcss";
 @config "./tailwind.config.cjs";
 
+:root {
+  --ink: oklch(0.21 0.03 160);
+  --muted: oklch(0.5 0.03 160);
+  --bg0: oklch(0.985 0.02 155);
+  --bg1: oklch(0.995 0.01 155);
+  --surface: oklch(1 0 0 / 0.78);
+  --surface-2: oklch(1 0 0 / 0.92);
+  --border: oklch(0.77 0.1 155 / 0.35);
+  --brand: oklch(0.72 0.17 155);
+  --brand-2: oklch(0.78 0.14 155);
+  --gold: oklch(0.85 0.16 85);
+  --shadow: rgba(3, 7, 18, 0.1);
+  --glow-brand: rgba(16, 185, 129, 0.22);
+  --glow-gold: rgba(250, 204, 21, 0.18);
+}
+
+.dark {
+  --ink: oklch(0.96 0.02 155);
+  --muted: oklch(0.75 0.03 155);
+  --bg0: oklch(0.16 0.05 160);
+  --bg1: oklch(0.12 0.04 160);
+  --surface: oklch(1 0 0 / 0.06);
+  --surface-2: oklch(1 0 0 / 0.09);
+  --border: oklch(0.77 0.1 155 / 0.18);
+  --shadow: rgba(0, 0, 0, 0.35);
+  --glow-brand: rgba(52, 211, 153, 0.22);
+  --glow-gold: rgba(250, 204, 21, 0.12);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  background: var(--bg1);
+  color: var(--ink);
+}
+
 .noise-texture {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.clover-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='rgba(16,185,129,0.22)' stroke-width='2'%3E%3Ccircle cx='86' cy='86' r='18'/%3E%3Ccircle cx='134' cy='86' r='18'/%3E%3Ccircle cx='86' cy='134' r='18'/%3E%3Ccircle cx='134' cy='134' r='18'/%3E%3Cpath d='M110 142 C110 170 98 186 84 202' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 220px 220px;
+}
+
+.dark .clover-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='rgba(52,211,153,0.18)' stroke-width='2'%3E%3Ccircle cx='86' cy='86' r='18'/%3E%3Ccircle cx='134' cy='86' r='18'/%3E%3Ccircle cx='86' cy='134' r='18'/%3E%3Ccircle cx='134' cy='134' r='18'/%3E%3Cpath d='M110 142 C110 170 98 186 84 202' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.ticket-cut {
+  clip-path: polygon(
+    0 14px,
+    14px 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    14px 100%,
+    0 calc(100% - 14px)
+  );
 }
 
 .receipt-zigzag {
@@ -77,10 +140,6 @@
 .anim-delay-58 { animation-delay: 3480ms; animation-fill-mode: both; }
 .anim-delay-59 { animation-delay: 3540ms; animation-fill-mode: both; }
 .anim-delay-60 { animation-delay: 3600ms; animation-fill-mode: both; }
-
-body {
-  font-family: "Inter", sans-serif;
-}
 
 .glass-panel {
   background: rgba(255, 255, 255, 0.05);

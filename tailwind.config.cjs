@@ -31,7 +31,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        sans: ["Space Grotesk", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Fraunces", "ui-serif", "Georgia", "serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       keyframes: {
@@ -67,7 +68,7 @@ module.exports = {
         },
       },
       animation: {
-        shine: "shine 2s infinite",
+        shine: "shine 2s linear infinite",
         "fade-in": "fadeIn 0.5s ease-out forwards",
         "slide-up": "slideUp 0.5s ease-out forwards",
         "slide-right": "slideRight 0.5s ease-out forwards",
@@ -79,4 +80,3 @@ module.exports = {
   },
   plugins: [],
 };
-

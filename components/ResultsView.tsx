@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Trophy, Calendar, DollarSign, Clover, Plus, Shield, RefreshCw, AlertCircle } from 'lucide-react';
-import { GAMES, MONTH_NAMES } from '../constants';
-import { LotteryResult } from '../types';
-import { fetchAllResults } from '../services/officialLotteryService';
-import LotteryBall from './LotteryBall';
+import React, { useEffect, useRef, useState } from "react";
+import { Trophy, Calendar, RefreshCw, AlertCircle, Plus, Shield } from "lucide-react";
+import { GAMES, MONTH_NAMES } from "../constants";
+import { LotteryResult } from "../types";
+import { fetchAllResults } from "../services/officialLotteryService";
+import LotteryBall from "./LotteryBall";
 
 const ResultsView: React.FC = () => {
   const [results, setResults] = useState<LotteryResult[]>([]);
@@ -48,175 +48,194 @@ const ResultsView: React.FC = () => {
     }, AUTO_REFRESH_MS);
 
     const onFocusOrVisible = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         loadData({ silent: true });
       }
     };
 
-    window.addEventListener('focus', onFocusOrVisible);
-    document.addEventListener('visibilitychange', onFocusOrVisible);
+    window.addEventListener("focus", onFocusOrVisible);
+    document.addEventListener("visibilitychange", onFocusOrVisible);
 
     return () => {
       window.clearInterval(intervalId);
-      window.removeEventListener('focus', onFocusOrVisible);
-      document.removeEventListener('visibilitychange', onFocusOrVisible);
+      window.removeEventListener("focus", onFocusOrVisible);
+      document.removeEventListener("visibilitychange", onFocusOrVisible);
     };
   }, []);
 
   if (loading) {
     return (
-      <div className="w-full max-w-4xl mx-auto pb-20 pt-10 px-4">
-         <div className="flex flex-col items-center justify-center gap-4 animate-pulse">
-            <div className="h-8 w-48 bg-slate-200 dark:bg-white/10 rounded-lg"></div>
-            <div className="h-4 w-64 bg-slate-200 dark:bg-white/10 rounded-lg"></div>
-         </div>
-         <div className="grid gap-8 mt-10">
-            {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white dark:bg-white/5 h-64 rounded-2xl border border-slate-200 dark:border-white/5 animate-pulse"></div>
+      <div className="w-full max-w-4xl mx-auto pt-6 md:pt-10">
+        <div className="ticket-cut bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_24px_90px_-72px_var(--shadow)] p-6 md:p-8">
+          <div className="h-7 w-56 bg-black/10 dark:bg-white/10 rounded-2xl" />
+          <div className="mt-3 h-4 w-72 bg-black/10 dark:bg-white/10 rounded-2xl" />
+          <div className="mt-8 grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="ticket-cut h-44 bg-black/5 dark:bg-white/5 rounded-3xl" />
             ))}
-         </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto animate-fade-in pb-20">
-      <div className="text-center mb-10 relative">
-        <h2 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white flex items-center justify-center gap-3 tracking-tight">
-          <Trophy className="text-yellow-500 fill-yellow-500" size={32} /> 
-          Resultados Oficiais
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-gray-400 mt-2 font-medium flex items-center justify-center gap-2">
-           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-           {refreshing
-             ? 'Atualizando dados...'
-             : lastUpdatedAt
-             ? `Atualizado às ${lastUpdatedAt.toLocaleTimeString('pt-BR')}`
-             : 'Dados atualizados da Caixa'}
-        </p>
-        <button 
-           onClick={() => loadData({ force: true })}
-           disabled={loading || refreshing}
-           className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 transition-colors"
-           title="Atualizar"
+    <div className="w-full max-w-4xl mx-auto animate-fade-in pb-16">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 md:mb-10">
+        <div>
+          <h2 className="font-display text-3xl md:text-5xl font-black tracking-tight text-[color:var(--ink)] flex items-center gap-3">
+            <span className="inline-flex items-center justify-center w-12 h-12 rounded-[22px] bg-[color:var(--surface)] border border-[color:var(--border)]">
+              <Trophy size={24} className="text-[color:var(--gold)]" />
+            </span>
+            Resultados Oficiais
+          </h2>
+          <p className="mt-3 text-sm md:text-base text-[color:var(--muted)] font-semibold flex items-center gap-2">
+            <span className={"w-2.5 h-2.5 rounded-full " + (refreshing ? "bg-[color:var(--gold)] animate-pulse" : "bg-emerald-500 animate-pulse")} />
+            {refreshing
+              ? "Atualizando agora..."
+              : lastUpdatedAt
+              ? `Atualizado às ${lastUpdatedAt.toLocaleTimeString("pt-BR")}`
+              : "Atualizado pela Caixa"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => loadData({ force: true })}
+          disabled={loading || refreshing}
+          className={[
+            "inline-flex items-center justify-center gap-2 px-5 py-3 rounded-[22px] font-extrabold tracking-wide",
+            "bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl",
+            "hover:bg-black/5 dark:hover:bg-white/5 transition-colors",
+            (loading || refreshing) ? "opacity-70 cursor-not-allowed" : "active:scale-[0.98]",
+          ].join(" ")}
         >
-            <RefreshCw size={16} className={`text-slate-500 dark:text-slate-300 ${(loading || refreshing) ? 'animate-spin' : ''}`} />
+          <RefreshCw size={18} className={(loading || refreshing) ? "animate-spin text-[color:var(--muted)]" : "text-[color:var(--muted)]"} />
+          Atualizar
         </button>
       </div>
 
-      <div className="grid gap-8">
+      {error && (
+        <div className="mb-6 ticket-cut bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_22px_80px_-68px_var(--shadow)] p-5 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex items-center justify-center w-11 h-11 rounded-[20px] bg-amber-500/10 border border-amber-500/20">
+                <AlertCircle size={20} className="text-amber-500" />
+              </span>
+              <div>
+                <div className="font-black tracking-tight text-[color:var(--ink)]">Não foi possível carregar agora</div>
+                <div className="text-sm text-[color:var(--muted)] font-semibold">
+                  A API pode oscilar. Tente atualizar em alguns segundos.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => loadData({ force: true })}
+              className="px-5 py-3 rounded-[22px] font-extrabold tracking-wide bg-emerald-600 text-white shadow-[0_22px_70px_-54px_rgba(16,185,129,0.95)] active:scale-[0.98]"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-6">
         {results.map((result) => {
           const gameDef = GAMES.find((g) => g.id === result.gameId);
           if (!gameDef) return null;
 
           return (
-            <div key={result.gameId} className="relative group perspective-1000 animate-slide-up">
-              
-              {/* Card Container simulating a receipt */}
-              <div className="relative bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl border-x border-t border-slate-100 dark:border-white/5">
-                
-                {/* Header Strip */}
-                <div className={`
-                  h-2 w-full bg-gradient-to-r 
-                  from-${gameDef.color}-500 to-${gameDef.color}-600
-                `}></div>
+            <div key={result.gameId} className="relative">
+              <div className="ticket-cut relative overflow-hidden bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_26px_100px_-74px_var(--shadow)]">
+                <div className={`h-2 w-full bg-gradient-to-r from-${gameDef.color}-500 to-${gameDef.color}-600`} />
 
-                <div className="p-0">
-                  {/* Top Section: Identity */}
-                  <div className="px-6 py-5 flex items-start justify-between bg-slate-50 dark:bg-white/5 border-b border-dashed border-slate-200 dark:border-white/10">
-                    <div className="flex items-center gap-4">
-                        <div className={`
-                            w-12 h-12 rounded-xl rotate-3 flex items-center justify-center shadow-lg
-                            bg-gradient-to-br from-${gameDef.color}-500 to-${gameDef.color}-700 text-white
-                        `}>
-                            <Clover size={24} />
-                        </div>
-                        <div>
-                            <h3 className={`font-black text-xl uppercase tracking-tight text-slate-800 dark:text-white`}>
-                                {gameDef.name}
-                            </h3>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs font-mono text-slate-500 dark:text-gray-400 mt-1">
-                                <span className="bg-slate-200 dark:bg-black/40 px-2 py-0.5 rounded">CONCURSO {result.contestNumber}</span>
-                                <span className="hidden sm:inline">•</span>
-                                <span className="flex items-center gap-1"><Calendar size={12}/> {result.date}</span>
-                            </div>
-                        </div>
+                <div className="p-5 md:p-7">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div>
+                      <h3 className="font-display text-2xl md:text-3xl font-black tracking-tight text-[color:var(--ink)]">
+                        {gameDef.name}
+                      </h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-extrabold tracking-wide text-[color:var(--muted)]">
+                        <span className="px-2.5 py-1 rounded-full bg-[color:var(--surface-2)] border border-[color:var(--border)]">
+                          CONCURSO {result.contestNumber}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar size={12} /> {result.date}
+                        </span>
+                      </div>
                     </div>
-                    
+
                     {result.accumulated && (
-                        <div className="flex flex-col items-end">
-                            <span className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] md:text-xs font-bold uppercase rounded-full shadow-lg animate-pulse tracking-wide">
-                                Acumulou!
-                            </span>
-                        </div>
+                      <span className="self-start px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-indigo-600 text-white shadow-[0_18px_60px_-44px_rgba(79,70,229,0.65)]">
+                        Acumulou
+                      </span>
                     )}
                   </div>
 
-                  {/* Body: Numbers */}
-                  <div className="px-6 py-6 bg-white dark:bg-[#1e293b]">
-                     <div className="flex flex-wrap gap-2 md:gap-3 justify-center md:justify-start">
-                        {result.numbers.map((n, i) => (
-                           <LotteryBall key={i} number={n} color={gameDef.color} size="small" delay={i} />
-                        ))}
-                        {/* Special Numbers */}
-                        {result.specialNumbers && result.specialNumbers.map((n, i) => (
-                           <div key={`sp-${i}`} className="flex items-center ml-2">
-                              <span className="mr-2 text-slate-300"><Plus size={16}/></span>
-                              <LotteryBall 
-                                 number={n} 
-                                 color={gameDef.specialRange?.color || 'emerald'} 
-                                 size="small" 
-                                 label={gameDef.id === 'dia-de-sorte' ? MONTH_NAMES[n-1]?.substring(0,3) : undefined} 
-                                 labelPosition="bottom"
-                              />
-                           </div>
-                        ))}
-                        {/* Timemania Team */}
-                        {result.extraString && (
-                            <div className="flex items-center ml-2 pl-2 border-l border-slate-200 dark:border-white/10">
-                                <span className="px-4 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-200 border border-amber-200 dark:border-amber-800/50 text-xs font-bold flex items-center gap-2 uppercase tracking-wide">
-                                    <Shield size={14} className="fill-amber-200" /> {result.extraString}
-                                </span>
-                            </div>
-                        )}
-                     </div>
+                  <div className="mt-6 ticket-cut bg-[color:var(--surface-2)] border border-[color:var(--border)] p-5 md:p-6">
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
+                      {result.numbers.map((n, i) => (
+                        <LotteryBall key={i} number={n} color={gameDef.color} size="small" delay={i} />
+                      ))}
+
+                      {result.specialNumbers && result.specialNumbers.length > 0 && (
+                        <>
+                          <span className="mx-1 text-[color:var(--muted)] font-black">
+                            <Plus size={16} />
+                          </span>
+                          {result.specialNumbers.map((n, i) => (
+                            <LotteryBall
+                              key={`sp-${i}`}
+                              number={n}
+                              color={gameDef.specialRange?.color || "emerald"}
+                              size="small"
+                              label={gameDef.id === "dia-de-sorte" ? MONTH_NAMES[n - 1]?.substring(0, 3) : undefined}
+                              labelPosition="bottom"
+                            />
+                          ))}
+                        </>
+                      )}
+
+                      {result.extraString && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)]">
+                          <Shield size={14} className="text-[color:var(--gold)]" />
+                          <span className="text-xs font-extrabold tracking-wide uppercase text-[color:var(--ink)]">
+                            {result.extraString}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Footer: Prize Info */}
-                  <div className="px-6 py-5 bg-slate-50 dark:bg-black/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-                     <div className="text-center sm:text-left">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">
-                           Próximo Prêmio
-                        </p>
-                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black text-2xl tracking-tight">
-                           <span className="text-lg opacity-60">R$</span>
-                           {result.nextPrize.includes('R$') ? result.nextPrize.replace('R$', '').trim() : result.nextPrize}
-                        </div>
-                     </div>
-                     <div className="text-center sm:text-right">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">
-                           Próximo Sorteio
-                        </p>
-                        <p className="text-slate-700 dark:text-slate-200 font-bold font-mono">
-                           {result.nextDate}
-                        </p>
-                     </div>
+                  <div className="mt-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-black tracking-widest uppercase text-[color:var(--muted)]">
+                        Próximo prêmio
+                      </div>
+                      <div className="mt-1 font-display text-2xl md:text-3xl font-black tracking-tight text-emerald-700 dark:text-emerald-300">
+                        {result.nextPrize}
+                      </div>
+                    </div>
+                    <div className="sm:text-right">
+                      <div className="text-[10px] font-black tracking-widest uppercase text-[color:var(--muted)]">
+                        Próximo sorteio
+                      </div>
+                      <div className="mt-1 font-mono font-black text-[color:var(--ink)]">{result.nextDate}</div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Zig-Zag Bottom Edge (Pure CSS Receipt Effect) */}
-                <div 
-                    className="absolute bottom-[-10px] left-0 right-0 z-10 h-4 receipt-zigzag bg-white dark:bg-[#1e293b]"
-                ></div>
+                <div className="absolute bottom-[-10px] left-0 right-0 z-10 h-4 receipt-zigzag bg-[color:var(--surface)]" />
               </div>
             </div>
           );
         })}
-        
-        <div className="text-center text-xs text-slate-400 dark:text-gray-600 mt-8 mb-8 flex items-center justify-center gap-2">
-           {error && <AlertCircle size={12} className="text-amber-500" />}
-           Dados obtidos via API pública (sujeito a disponibilidade).
-        </div>
+      </div>
+
+      <div className="mt-10 text-center text-xs font-semibold text-[color:var(--muted)] flex items-center justify-center gap-2">
+        {error && <AlertCircle size={12} className="text-amber-500" />}
+        Dados obtidos via endpoint oficial (sujeito a disponibilidade).
       </div>
     </div>
   );

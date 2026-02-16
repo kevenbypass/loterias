@@ -201,7 +201,7 @@ export const MOCK_RESULTS: LotteryResult[] = [
 
 export const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: 'Home' },
-  { id: 'saved', label: 'Salvos', icon: 'Bookmark' },
+  { id: 'saved', label: 'Bilhetes', icon: 'Bookmark' },
   { id: 'results', label: 'Resultados', icon: 'BarChart' },
 ];
 

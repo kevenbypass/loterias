@@ -1,8 +1,19 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { ChevronDown, Search, Clover, Sparkles, Copy, Bookmark, Shield, Dices, ArrowRight, Zap, Trophy, History, BarChart } from 'lucide-react';
-import { LotteryGame } from '../types';
-import { GAMES, MONTH_NAMES } from '../constants';
-import LotteryBall from './LotteryBall';
+import React, { useRef, useState, useEffect } from "react";
+import {
+  ChevronDown,
+  Search,
+  Clover,
+  Sparkles,
+  Copy,
+  Bookmark,
+  Shield,
+  Dices,
+  Zap,
+  Trophy,
+  History,
+} from "lucide-react";
+import { GAMES, MONTH_NAMES } from "../constants";
+import LotteryBall from "./LotteryBall";
 
 interface HomeViewProps {
   selectedGameId: string;
@@ -29,270 +40,359 @@ const HomeView: React.FC<HomeViewProps> = ({
   isGenerating,
   onGenerate,
   onCopy,
-  onSave
+  onSave,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedGame = GAMES.find(g => g.id === selectedGameId) || GAMES[0];
-  const filteredGames = GAMES.filter(g => g.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const selectedGame = GAMES.find((g) => g.id === selectedGameId) || GAMES[0];
+  const filteredGames = GAMES.filter((g) =>
+    g.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // Close dropdown logic
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
     }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => { document.removeEventListener("mousedown", handleClickOutside); };
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // Focus Input
   useEffect(() => {
-    if (isDropdownOpen) setTimeout(() => searchInputRef.current?.focus(), 100);
-    else setTimeout(() => setSearchTerm(''), 300);
+    if (isDropdownOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    } else {
+      setTimeout(() => setSearchTerm(""), 250);
+    }
   }, [isDropdownOpen]);
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-[80vh] w-full animate-fade-in pb-8">
-      
-      {/* 1. HERO SECTION: Adaptive Colors */}
-      <div className="flex flex-col items-center text-center mb-6 md:mb-12 w-full max-w-3xl mx-auto px-2 mt-8 md:mt-16">
-          
-          {/* Headline - Dark Text in Light Mode */}
-          <h1 className="text-3xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter mb-3 md:mb-4 leading-[1.1] animate-slide-up [animation-delay:100ms]">
-            Sua aposta <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 dark:from-emerald-400 dark:via-teal-200 dark:to-emerald-400 bg-[length:200%_auto] animate-shine">
+    <div className="w-full flex flex-col items-center animate-fade-in pb-8">
+      <section className="w-full max-w-4xl mx-auto text-center pt-2 md:pt-6">
+        <div className="relative px-1">
+          <Clover
+            className="absolute left-1/2 top-0 -translate-x-1/2 w-[280px] h-[280px] md:w-[460px] md:h-[460px] text-emerald-500/10 dark:text-emerald-400/10 pointer-events-none"
+            strokeWidth={1.1}
+          />
+
+          <div className="relative">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_14px_40px_-30px_var(--shadow)]">
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-400 text-white shadow-[0_14px_40px_-30px_rgba(16,185,129,0.9)]">
+                <Clover size={16} />
+              </span>
+              <span className="text-xs md:text-sm font-extrabold tracking-wide text-[color:var(--ink)]">
+                Gerador de bilhetes
+              </span>
+            </div>
+
+            <h1 className="mt-6 md:mt-8 font-display text-4xl md:text-7xl font-black tracking-tight leading-[0.95] text-[color:var(--ink)]">
+              Sua aposta{" "}
+              <span className="block text-transparent bg-clip-text bg-[linear-gradient(90deg,oklch(0.75_0.18_155),oklch(0.78_0.15_170),oklch(0.86_0.16_85))]">
                 vencedora.
-            </span>
-          </h1>
+              </span>
+            </h1>
 
-          {/* Subheadline - Slate Text in Light Mode */}
-          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-lg max-w-xl mx-auto mb-6 md:mb-8 font-light leading-relaxed animate-slide-up [animation-delay:200ms] hidden md:block">
-            Utilize nosso algoritmo proprietário para gerar combinações otimizadas baseadas em padrões históricos e aleatoriedade quântica.
-          </p>
-          <p className="text-slate-600 dark:text-slate-400 text-xs max-w-xs mx-auto mb-6 font-light leading-relaxed animate-slide-up [animation-delay:200ms] md:hidden">
-            Algoritmo proprietário para combinações otimizadas.
-          </p>
+            <p className="mt-4 md:mt-5 text-sm md:text-lg leading-relaxed text-[color:var(--muted)] max-w-2xl mx-auto">
+              Escolha o jogo, selecione as dezenas e gere um bilhete com a energia do trevo.
+            </p>
+          </div>
+        </div>
+      </section>
 
-      </div>
+      <section className="w-full max-w-4xl mx-auto mt-8 md:mt-12">
+        <div className="relative group">
+          <div className="absolute -inset-1 rounded-[30px] bg-[radial-gradient(800px_circle_at_25%_0%,rgba(16,185,129,0.35),transparent_55%),radial-gradient(700px_circle_at_85%_15%,rgba(250,204,21,0.25),transparent_60%)] blur-2xl opacity-50 group-hover:opacity-70 transition-opacity" />
 
-      {/* 2. THE CONSOLE: Mobile-First Card - Light/Dark Adaptive */}
-      <div className="w-full max-w-3xl relative group md:perspective-1000 animate-slide-up [animation-delay:400ms]">
-          
-          {/* Background Glow */}
-          <div className="absolute -inset-1 bg-gradient-to-b from-emerald-500/20 to-blue-600/10 rounded-[2rem] blur-xl opacity-30 md:opacity-50 group-hover:opacity-70 transition duration-1000"></div>
-          
-          {/* Main Card */}
-          <div className="relative bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl rounded-2xl md:rounded-[24px] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden ring-1 ring-slate-900/5 dark:ring-white/5 transition-colors duration-500">
-            
-            {/* Console Header */}
-            <div className="flex flex-col md:flex-row items-center justify-between px-4 py-4 md:px-6 md:py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] gap-3">
-                
-                {/* Game Selector (The Dropdown) */}
-                <div className="relative z-50 w-full md:w-auto" ref={dropdownRef}>
-                  <button 
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center justify-between w-full md:w-64 gap-3 bg-white dark:bg-black/40 active:bg-slate-50 dark:active:bg-black/60 md:hover:bg-slate-50 dark:md:hover:bg-black/60 px-4 py-3 md:py-2.5 rounded-xl border border-slate-200 dark:border-white/10 transition-all group shadow-sm dark:shadow-none"
-                  >
-                     <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-lg bg-${selectedGame.color}-100 dark:bg-${selectedGame.color}-500/20 text-${selectedGame.color}-600 dark:text-${selectedGame.color}-400`}>
-                           <Clover size={16} />
-                        </div>
-                        <span className="font-bold text-slate-700 dark:text-slate-200 text-sm tracking-wide uppercase">{selectedGame.name}</span>
-                     </div>
-                     <ChevronDown size={14} className={`text-slate-400 dark:text-slate-500 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
+          <div className="ticket-cut relative overflow-hidden backdrop-blur-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_28px_90px_-54px_var(--shadow)]">
+            <div className="absolute inset-0 pointer-events-none clover-pattern opacity-[0.10] dark:opacity-[0.07]" />
 
-                  {/* Dropdown Menu */}
-                  {isDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-full md:w-72 bg-white dark:bg-[#1e293b] rounded-xl shadow-xl dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-white/10 overflow-hidden z-[100] animate-zoom-in">
-                      <div className="p-2 border-b border-slate-100 dark:border-white/5">
-                          <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                            <input
-                                ref={searchInputRef}
-                                type="text"
-                                placeholder="Filtrar jogo..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-500/50 placeholder-slate-400"
-                            />
-                          </div>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto p-1.5 space-y-0.5 custom-scrollbar">
-                        {filteredGames.map(game => (
-                          <button
-                            key={game.id}
-                            onClick={() => { setSelectedGameId(game.id); setIsDropdownOpen(false); }}
-                            className={`
-                              flex items-center gap-3 w-full px-3 py-3 rounded-lg text-left transition-all active:scale-[0.98]
-                              ${selectedGameId === game.id 
-                                ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold' 
-                                : 'text-slate-500 dark:text-slate-400 active:bg-slate-50 dark:active:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/5'}
-                            `}
-                          >
-                            <div className={`w-2 h-2 rounded-full ${selectedGameId === game.id ? `bg-${game.color}-500 shadow-[0_0_8px_currentColor]` : 'bg-slate-300 dark:bg-slate-700'}`}></div>
-                            <span className="text-sm md:text-xs font-bold uppercase tracking-wider">{game.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Configuration Tabs */}
-                {!selectedGame.allowRepeats && (
-                    <div className="w-full md:w-auto overflow-x-auto hide-scrollbar">
-                      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-black/20 rounded-lg border border-slate-200 dark:border-white/5 min-w-max mx-auto md:mx-0">
-                          {[selectedGame.defaultCount, selectedGame.defaultCount + 1, selectedGame.defaultCount + 2]
-                            .filter(n => n <= selectedGame.maxCount)
-                            .map(n => (
-                            <button
-                              key={n}
-                              onClick={() => setNumCount(n)}
-                              className={`
-                                flex-1 md:flex-none px-4 md:px-3 py-2 md:py-1 rounded-md text-[11px] md:text-[10px] font-bold transition-all
-                                ${numCount === n 
-                                  ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-white/5' 
-                                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}
-                              `}
-                            >
-                              {n} Dezenas
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Display Area - Light/Dark Adaptive */}
-            <div className="p-6 md:p-12 flex flex-col items-center justify-center min-h-[250px] md:min-h-[300px] bg-slate-50 dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617] relative transition-colors duration-500">
-               
-               {/* Digital Grid Background - Adaptive Opacity */}
-               <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_100%,transparent_100%)] pointer-events-none"></div>
-
-               {generatedNumbers.length === 0 ? (
-                  <div className="flex flex-col items-center text-center z-10 opacity-60">
-                     <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center mb-4 animate-pulse shadow-sm dark:shadow-none">
-                        <Dices size={28} className="text-slate-400" strokeWidth={1.5} />
-                     </div>
-                     <h3 className="text-base md:text-lg font-medium text-slate-400 dark:text-slate-300">Aguardando processamento</h3>
-                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-[200px]">Selecione os parâmetros acima e inicie a geração.</p>
-                  </div>
-               ) : (
-                   <div className="w-full z-10 flex flex-col items-center animate-zoom-in">
-                      {/* Main Numbers */}
-                      <div className={`
-                         flex flex-wrap justify-center gap-2 md:gap-4 mb-6
-                         ${selectedGame.id === 'lotomania' ? 'max-w-2xl' : ''}
-                      `}>
-                         {generatedNumbers.map((num, idx) => {
-                              const isSuperSete = selectedGame.id === 'super-sete';
-                              const label = isSuperSete ? `C${idx + 1}` : undefined;
-                              const size = selectedGame.id === 'lotomania' ? 'small' : 'normal';
-                              return (
-                                  <LotteryBall 
-                                    key={`${selectedGameId}-${num}-${idx}`} 
-                                    number={num} 
-                                    color={selectedGame.color} 
-                                    delay={idx}
-                                    label={label}
-                                    labelPosition="top"
-                                    size={size}
-                                  />
-                              );
-                         })}
-                      </div>
-
-                      {/* Extras */}
-                      {(specialNumbers.length > 0 || extraString) && (
-                         <div className="flex items-center flex-wrap justify-center gap-3 md:gap-4 py-2 md:py-3 px-4 md:px-6 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 backdrop-blur-sm animate-slide-up [animation-delay:200ms] shadow-sm dark:shadow-none">
-                             {specialNumbers.map((num, idx) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                    <span className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{selectedGame.specialRange?.label}:</span>
-                                    <span className={`text-${selectedGame.color}-500 dark:text-${selectedGame.color}-400 font-bold font-mono text-sm md:text-base`}>
-                                        {selectedGame.id === 'dia-de-sorte' ? MONTH_NAMES[num-1].substring(0,3).toUpperCase() : num}
-                                    </span>
-                                </div>
-                             ))}
-                             {extraString && (
-                                <div className="flex items-center gap-2">
-                                    <Shield size={12} className="text-amber-500 dark:text-amber-400" />
-                                    <span className="text-amber-600 dark:text-amber-200 font-bold text-[10px] md:text-xs uppercase tracking-wider">{extraString}</span>
-                                </div>
-                             )}
-                         </div>
-                      )}
-                   </div>
-               )}
-            </div>
-
-            {/* Action Bar */}
-            <div className="p-4 bg-white/50 dark:bg-white/[0.02] border-t border-slate-100 dark:border-white/5 flex flex-col md:flex-row items-center gap-3 md:gap-4">
+            <div className="relative px-5 py-5 md:px-7 md:py-6 bg-[color:var(--surface-2)] border-b border-[color:var(--border)] flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+              <div className="relative z-50 w-full md:w-auto" ref={dropdownRef}>
                 <button
-                    onClick={onGenerate}
-                    disabled={isGenerating}
-                    className={`
-                      relative w-full md:flex-1 py-4 md:py-4 rounded-xl font-bold text-sm uppercase tracking-widest text-white shadow-lg overflow-hidden group
-                      ${isGenerating ? 'cursor-not-allowed opacity-80' : 'active:scale-[0.97] transition-all duration-150 hover:shadow-emerald-500/20'}
-                    `}
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center justify-between w-full md:w-[320px] gap-3 px-4 py-3 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_14px_50px_-40px_var(--shadow)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-500"></div>
-                    <div className="hidden md:block absolute inset-0 opacity-0 group-hover:opacity-100 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%] animate-[shine_2s_linear_infinite]"></div>
-                    
-                    <span className="relative flex items-center justify-center gap-3">
-                        {isGenerating ? (
-                            <span className="flex items-center gap-2">
-                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                Processando...
-                            </span>
-                        ) : (
-                            <>
-                                <Sparkles size={18} className="text-emerald-100" />
-                                Gerar Jogo
-                            </>
-                        )}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-${selectedGame.color}-100 dark:bg-${selectedGame.color}-500/20 text-${selectedGame.color}-600 dark:text-${selectedGame.color}-400`}
+                    >
+                      <Clover size={16} />
                     </span>
+                    <div className="min-w-0 text-left">
+                      <span className="block text-[10px] font-extrabold tracking-widest uppercase text-[color:var(--muted)]">
+                        Jogo
+                      </span>
+                      <span className="block font-black tracking-tight text-[color:var(--ink)] truncate">
+                        {selectedGame.name}
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={`text-[color:var(--muted)] transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
 
-                {generatedNumbers.length > 0 && (
-                    <div className="flex w-full md:w-auto gap-2 animate-fade-in">
-                        <button 
-                          onClick={onCopy}
-                          className="flex-1 md:flex-none px-4 py-4 md:py-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 active:text-slate-900 dark:active:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-colors font-medium text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 shadow-sm dark:shadow-none"
-                        >
-                           <Copy size={16} /> Copiar
-                        </button>
-                        <button 
-                          onClick={onSave}
-                          className="flex-1 md:flex-none px-4 py-4 md:py-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 active:text-slate-900 dark:active:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-colors font-medium text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 shadow-sm dark:shadow-none"
-                        >
-                           <Bookmark size={16} /> Salvar
-                        </button>
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-full md:w-[360px] ticket-cut bg-[color:var(--surface)] backdrop-blur-xl border border-[color:var(--border)] shadow-[0_26px_70px_-44px_var(--shadow)] overflow-hidden z-[100] animate-zoom-in">
+                    <div className="p-3 border-b border-[color:var(--border)] bg-[color:var(--surface-2)]">
+                      <div className="relative">
+                        <Search
+                          size={14}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--muted)]"
+                        />
+                        <input
+                          ref={searchInputRef}
+                          type="text"
+                          placeholder="Filtrar jogo..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full px-3 py-2.5 pl-9 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
+                        />
+                      </div>
                     </div>
+
+                    <div className="max-h-64 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                      {filteredGames.map((game) => {
+                        const active = selectedGameId === game.id;
+                        return (
+                          <button
+                            key={game.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedGameId(game.id);
+                              setIsDropdownOpen(false);
+                            }}
+                            className={[
+                              "w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-colors",
+                              active
+                                ? "bg-emerald-500/10 text-[color:var(--ink)]"
+                                : "hover:bg-black/5 dark:hover:bg-white/5 text-[color:var(--muted)]",
+                            ].join(" ")}
+                          >
+                            <span
+                              className={`w-2.5 h-2.5 rounded-full ${
+                                active
+                                  ? `bg-${game.color}-500 shadow-[0_0_14px_currentColor]`
+                                  : "bg-black/15 dark:bg-white/15"
+                              }`}
+                            />
+                            <span className="font-extrabold tracking-tight">{game.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
+              </div>
+
+              {!selectedGame.allowRepeats && (
+                <div className="w-full md:flex-1 overflow-x-auto hide-scrollbar">
+                  <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] min-w-max">
+                    {[selectedGame.defaultCount, selectedGame.defaultCount + 1, selectedGame.defaultCount + 2]
+                      .filter((n) => n <= selectedGame.maxCount)
+                      .map((n) => {
+                        const active = numCount === n;
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setNumCount(n)}
+                            className={[
+                              "px-4 py-2 rounded-2xl text-xs font-extrabold tracking-wide transition-all",
+                              active
+                                ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_18px_50px_-36px_rgba(16,185,129,0.95)]"
+                                : "text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-black/5 dark:hover:bg-white/5",
+                            ].join(" ")}
+                          >
+                            {n} dezenas
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              <div className="hidden md:flex items-center gap-2 text-[11px] font-extrabold tracking-wide text-[color:var(--muted)]">
+                <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
+                <span>Bilhete aleatório, sem IA.</span>
+              </div>
+            </div>
+
+            <div className="relative p-6 md:p-10">
+              <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(850px_circle_at_50%_0%,rgba(16,185,129,0.10),transparent_60%)]" />
+
+              {generatedNumbers.length === 0 ? (
+                <div className="relative flex flex-col items-center text-center py-14 md:py-16">
+                  <div className="w-16 h-16 rounded-[26px] bg-[color:var(--surface-2)] border border-[color:var(--border)] shadow-[0_18px_60px_-44px_var(--shadow)] flex items-center justify-center">
+                    <Dices
+                      size={28}
+                      className="text-emerald-600 dark:text-emerald-400"
+                      strokeWidth={1.7}
+                    />
+                  </div>
+                  <h3 className="mt-4 font-display text-2xl md:text-3xl font-black tracking-tight">
+                    Pronto para girar
+                  </h3>
+                  <p className="mt-2 text-sm text-[color:var(--muted)] max-w-sm">
+                    Escolha o jogo, ajuste as dezenas e aperte{" "}
+                    <span className="font-extrabold text-[color:var(--ink)]">Gerar bilhete</span>.
+                  </p>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="ticket-cut bg-[color:var(--surface-2)] border border-[color:var(--border)] shadow-[0_18px_70px_-52px_var(--shadow)] p-5 md:p-7">
+                    <div
+                      className={`flex flex-wrap justify-center gap-2 md:gap-4 ${
+                        selectedGame.id === "lotomania" ? "max-w-3xl mx-auto" : ""
+                      }`}
+                    >
+                      {generatedNumbers.map((num, idx) => {
+                        const isSuperSete = selectedGame.id === "super-sete";
+                        const label = isSuperSete ? `C${idx + 1}` : undefined;
+                        const size = selectedGame.id === "lotomania" ? "small" : "normal";
+
+                        return (
+                          <LotteryBall
+                            key={`${selectedGameId}-${num}-${idx}`}
+                            number={num}
+                            color={selectedGame.color}
+                            delay={idx}
+                            label={label}
+                            labelPosition="top"
+                            size={size}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {(specialNumbers.length > 0 || extraString) && (
+                      <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:gap-4">
+                        {specialNumbers.map((num, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/60 dark:bg-white/5 border border-[color:var(--border)]"
+                          >
+                            <span className="text-[10px] font-extrabold tracking-widest uppercase text-[color:var(--muted)]">
+                              {selectedGame.specialRange?.label}
+                            </span>
+                            <span
+                              className={`font-mono font-black text-${selectedGame.color}-600 dark:text-${selectedGame.color}-300`}
+                            >
+                              {selectedGame.id === "dia-de-sorte"
+                                ? MONTH_NAMES[num - 1]?.substring(0, 3).toUpperCase()
+                                : num}
+                            </span>
+                          </div>
+                        ))}
+
+                        {extraString && (
+                          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/60 dark:bg-white/5 border border-[color:var(--border)]">
+                            <Shield size={14} className="text-[color:var(--gold)]" />
+                            <span className="text-xs font-extrabold tracking-wide uppercase text-[color:var(--ink)]">
+                              {extraString}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative px-5 py-5 md:px-7 md:py-6 bg-[color:var(--surface-2)] border-t border-[color:var(--border)] flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4">
+              <button
+                type="button"
+                onClick={onGenerate}
+                disabled={isGenerating}
+                className={[
+                  "relative w-full md:flex-1 px-6 py-4 rounded-[22px] font-black uppercase tracking-widest text-sm text-white overflow-hidden",
+                  "shadow-[0_22px_70px_-48px_rgba(16,185,129,0.95)] transition-transform",
+                  isGenerating
+                    ? "opacity-80 cursor-not-allowed"
+                    : "active:scale-[0.98] hover:brightness-[1.03]",
+                ].join(" ")}
+              >
+                <span className="absolute inset-0 bg-[linear-gradient(90deg,oklch(0.66_0.18_155),oklch(0.76_0.15_170),oklch(0.84_0.16_85))]" />
+                <span className="absolute inset-0 opacity-0 md:group-hover:opacity-100 transition-opacity bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.22)_50%,transparent_75%,transparent_100%)] bg-[length:240%_240%] animate-shine" />
+                <span className="relative flex items-center justify-center gap-3">
+                  {isGenerating ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={18} className="text-white/90" />
+                      Gerar bilhete
+                    </>
+                  )}
+                </span>
+              </button>
+
+              {generatedNumbers.length > 0 && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onCopy}
+                    className="flex-1 px-4 py-4 rounded-[22px] bg-[color:var(--surface)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-extrabold uppercase tracking-widest text-xs text-[color:var(--ink)] flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    <Copy size={16} />
+                    Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onSave}
+                    className="flex-1 px-4 py-4 rounded-[22px] bg-[color:var(--surface)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-extrabold uppercase tracking-widest text-xs text-[color:var(--ink)] flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    <Bookmark size={16} />
+                    Salvar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-      </div>
+        </div>
+      </section>
 
-      {/* 3. TRUST SIGNALS: The Footer */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mt-8 md:mt-16 max-w-4xl w-full px-6 opacity-60 grayscale md:hover:grayscale-0 transition-all duration-500">
+      <section className="w-full max-w-4xl mx-auto mt-10 md:mt-14">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
-              { label: "Algoritmo Quântico", icon: Zap },
-              { label: "Base Histórica", icon: History },
-              { label: "Análise Preditiva", icon: BarChart },
-              { label: "Alta Performance", icon: Trophy }
+            { label: "Trevo Verde", icon: Clover },
+            { label: "Bilhete rápido", icon: Zap },
+            { label: "Histórico na mão", icon: History },
+            { label: "Resultados oficiais", icon: Trophy },
           ].map((item, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 group cursor-default">
-                  <item.icon size={16} className="text-emerald-500 mb-0 md:mb-1" />
-                  <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400 text-center">{item.label}</span>
+            <div
+              key={i}
+              className="ticket-cut bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl px-4 py-4 shadow-[0_16px_60px_-50px_var(--shadow)]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                  <item.icon size={18} />
+                </span>
+                <div className="text-left">
+                  <div className="text-[11px] font-black tracking-wide text-[color:var(--ink)]">
+                    {item.label}
+                  </div>
+                  <div className="text-[10px] font-extrabold tracking-wide text-[color:var(--muted)]">
+                    Mobile e PC
+                  </div>
+                </div>
               </div>
+            </div>
           ))}
-      </div>
+        </div>
+      </section>
     </div>
   );
 };

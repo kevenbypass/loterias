@@ -163,12 +163,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout currentView={currentView} onNavigate={setCurrentView} isDarkMode={isDarkMode} toggleTheme={toggleTheme}>
+      <Layout currentView={currentView} onNavigate={setCurrentView} isDarkMode={isDarkMode} toggleTheme={toggleTheme}>
       
       {/* Toast Notification */}
       <div className={`fixed top-20 right-1/2 translate-x-1/2 md:translate-x-0 md:right-6 md:top-24 z-[70] transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
-          <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-full shadow-2xl font-bold text-sm flex items-center gap-2">
-             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <div className="ticket-cut bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_22px_70px_-54px_var(--shadow)] px-5 py-3 font-extrabold text-sm text-[color:var(--ink)] flex items-center gap-3">
+             <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-emerald-600 to-teal-400 animate-pulse shadow-[0_0_18px_rgba(16,185,129,0.65)]"></span>
              {toastMessage}
           </div>
       </div>
