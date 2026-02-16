@@ -56,6 +56,13 @@ const App: React.FC = () => {
 
   // Initial setup only (Load saved games) - Auto-generation removed
   useEffect(() => {
+    // Remove legacy admin key from older versions (Sonhos IA removed).
+    try {
+      localStorage.removeItem('lotosorte_internal_key');
+    } catch {
+      // ignore storage errors (private mode, blocked storage, etc.)
+    }
+
     const saved = localStorage.getItem('lotosorte_saved');
     if (saved) {
       setSavedGames(JSON.parse(saved));
