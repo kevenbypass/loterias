@@ -130,6 +130,8 @@ const resolveAllowedOrigins = (raw) => {
       "http://localhost",
       "https://localhost",
       "capacitor://localhost",
+      // Production default for this repo (prevents accidental outage if env var is cleared).
+      "https://loterias-1.onrender.com",
     ]);
   }
 
