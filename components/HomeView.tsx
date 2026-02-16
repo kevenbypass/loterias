@@ -384,9 +384,6 @@ const HomeView: React.FC<HomeViewProps> = ({
                   <div className="text-[11px] font-black tracking-wide text-[color:var(--ink)]">
                     {item.label}
                   </div>
-                  <div className="text-[10px] font-extrabold tracking-wide text-[color:var(--muted)]">
-                    Mobile e PC
-                  </div>
                 </div>
               </div>
             </div>
