@@ -18,6 +18,9 @@ const port = Number(process.env.PORT || process.env.API_PORT || 8787);
 const nodeEnv = process.env.NODE_ENV || "development";
 const OFFICIAL_API_TIMEOUT_MS = Number(process.env.OFFICIAL_API_TIMEOUT_MS || 12000);
 const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 * 60 * 1000);
+const OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS = Number(
+  process.env.OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS || 5 * 60 * 1000
+);
 
 const normalizeOfficialBaseUrl = (raw, fallback) => {
   const candidate = typeof raw === "string" ? raw.trim() : "";
@@ -123,8 +126,17 @@ const OFFICIAL_HTTP_AGENT = new https.Agent({
   maxSockets: 16,
 });
 
-const resolveAllowedOrigins = (raw) => {
+const resolveAllowedOrigins = (raw, environment) => {
   if (!raw) {
+    if (environment === "production") {
+      return new Set([
+        "capacitor://localhost",
+        // Keep explicit production defaults to avoid accidental open CORS.
+        "https://loterias-1.onrender.com",
+        "https://loterias-jrky.onrender.com",
+      ]);
+    }
+
     return new Set([
       "http://localhost:3000",
       "http://localhost",
@@ -148,7 +160,7 @@ const resolveAllowedOrigins = (raw) => {
   return new Set(list);
 };
 
-const allowedOrigins = resolveAllowedOrigins(process.env.ALLOWED_ORIGINS);
+const allowedOrigins = resolveAllowedOrigins(process.env.ALLOWED_ORIGINS, nodeEnv);
 
 const isOriginAllowed = (origin) => {
   if (!origin) return false;
@@ -160,6 +172,33 @@ const officialResultsCache = {
   expiresAt: 0,
   source: "unknown",
   diagnostics: null,
+};
+
+const forceRefreshByIp = new Map();
+
+const canUseForceRefresh = (clientIp) => {
+  if (!clientIp) return false;
+  if (OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS <= 0) return true;
+
+  const now = Date.now();
+  const lastRefreshAt = forceRefreshByIp.get(clientIp) || 0;
+  if (now - lastRefreshAt < OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS) {
+    return false;
+  }
+
+  forceRefreshByIp.set(clientIp, now);
+
+  // Opportunistic cleanup to avoid unbounded map growth.
+  if (forceRefreshByIp.size > 2000) {
+    const threshold = now - OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS;
+    for (const [ip, ts] of forceRefreshByIp.entries()) {
+      if (ts < threshold) {
+        forceRefreshByIp.delete(ip);
+      }
+    }
+  }
+
+  return true;
 };
 
 const formatCurrencyBRL = (value) => {
@@ -682,6 +721,12 @@ app.use(
   })
 );
 
+// API-only server hardening header.
+app.use((_req, res, next) => {
+  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  next();
+});
+
 app.get("/", (_req, res) => {
   res.json({ ok: true, service: "loterias-api" });
 });
@@ -735,7 +780,13 @@ const generalLimiter = rateLimit({
 app.use(generalLimiter);
 
 app.get("/api/official-results", async (req, res) => {
-  const forceRefresh = typeof req.query.force === "string" && req.query.force === "1";
+  const wantsForceRefresh = typeof req.query.force === "string" && req.query.force === "1";
+  const clientIp = typeof req.ip === "string" ? req.ip : "";
+  const forceRefresh = wantsForceRefresh ? canUseForceRefresh(clientIp) : false;
+
+  if (wantsForceRefresh && !forceRefresh) {
+    res.setHeader("X-Force-Refresh", "throttled");
+  }
 
   try {
     const results = await fetchAllOfficialResults({ forceRefresh });
