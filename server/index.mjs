@@ -49,9 +49,7 @@ const usingConfiguredProxyBase = configuredOfficialBaseOrigin !== OFFICIAL_CAIXA
 
 let OFFICIAL_API_BASE_URL = configuredOfficialBaseUrl;
 if (usingConfiguredProxyBase && !OFFICIAL_CAIXA_PROXY_KEY) {
-  console.warn(
-    "OFFICIAL_CAIXA_PROXY_KEY missing while OFFICIAL_CAIXA_BASE_URL points to proxy; falling back to direct Caixa base URL."
-  );
+  console.warn("Proxy configuration incomplete; falling back to direct Caixa base URL.");
   OFFICIAL_API_BASE_URL = OFFICIAL_CAIXA_DIRECT_BASE_URL;
 }
 
@@ -173,6 +171,7 @@ const officialResultsCache = {
   source: "unknown",
   diagnostics: null,
 };
+let officialResultsInFlight = null;
 
 const forceRefreshByIp = new Map();
 
@@ -655,63 +654,78 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
     return officialResultsCache.value;
   }
 
-  const gameIds = Object.keys(OFFICIAL_API_SLUGS);
-  let results = [];
-  let source = "unknown";
-  try {
-    results = await fetchAllOfficialResultsFromHome(gameIds);
-    source = "caixa_home";
-    diagnostics.providers.caixa_home = { ok: true, count: results.length };
-  } catch (error) {
-    const homeError = summarizeOfficialError(error);
-    diagnostics.providers.caixa_home = { ok: false, error: homeError };
-    console.warn("Official home endpoint failed; falling back to per-game endpoints:", homeError);
-
-    const perGame = await fetchAllOfficialResultsByGame(gameIds);
-    results = perGame.results;
-
-    diagnostics.providers.caixa_games = {
-      ok: perGame.results.length > 0,
-      count: perGame.results.length,
-      failed: perGame.errors.length,
-      errors: perGame.errors.slice(0, 6),
-    };
-
-    if (results.length) {
-      source = "caixa_games";
-    }
+  if (officialResultsInFlight) {
+    return officialResultsInFlight;
   }
 
-  if (!results.length) {
+  const currentFetchPromise = (async () => {
+    const gameIds = Object.keys(OFFICIAL_API_SLUGS);
+    let results = [];
+    let source = "unknown";
     try {
-      results = await fetchAllOfficialResultsFromLookup(gameIds);
-      source = "lottolookup";
-      diagnostics.providers.lottolookup = { ok: true, count: results.length };
+      results = await fetchAllOfficialResultsFromHome(gameIds);
+      source = "caixa_home";
+      diagnostics.providers.caixa_home = { ok: true, count: results.length };
     } catch (error) {
-      const lookupError = summarizeOfficialError(error);
-      diagnostics.providers.lottolookup = { ok: false, error: lookupError };
-      console.warn("Lookup fallback endpoint failed:", lookupError);
+      const homeError = summarizeOfficialError(error);
+      diagnostics.providers.caixa_home = { ok: false, error: homeError };
+      console.warn("Official home endpoint failed; falling back to per-game endpoints:", homeError);
+
+      const perGame = await fetchAllOfficialResultsByGame(gameIds);
+      results = perGame.results;
+
+      diagnostics.providers.caixa_games = {
+        ok: perGame.results.length > 0,
+        count: perGame.results.length,
+        failed: perGame.errors.length,
+        errors: perGame.errors.slice(0, 6),
+      };
+
+      if (results.length) {
+        source = "caixa_games";
+      }
+    }
+
+    if (!results.length) {
+      try {
+        results = await fetchAllOfficialResultsFromLookup(gameIds);
+        source = "lottolookup";
+        diagnostics.providers.lottolookup = { ok: true, count: results.length };
+      } catch (error) {
+        const lookupError = summarizeOfficialError(error);
+        diagnostics.providers.lottolookup = { ok: false, error: lookupError };
+        console.warn("Lookup fallback endpoint failed:", lookupError);
+      }
+    }
+
+    if (!results.length) {
+      diagnostics.finishedAt = new Date().toISOString();
+      const unavailableError = createOfficialError("official_results_unavailable", {
+        diagnostics,
+      });
+      throw unavailableError;
+    }
+
+    const orderIndex = new Map(gameIds.map((gameId, idx) => [gameId, idx]));
+    results.sort((a, b) => (orderIndex.get(a.gameId) ?? 999) - (orderIndex.get(b.gameId) ?? 999));
+
+    diagnostics.source = source;
+    diagnostics.finishedAt = new Date().toISOString();
+    officialResultsCache.value = results;
+    officialResultsCache.expiresAt = Date.now() + OFFICIAL_RESULTS_TTL_MS;
+    officialResultsCache.source = source;
+    officialResultsCache.diagnostics = diagnostics;
+    return results;
+  })();
+
+  officialResultsInFlight = currentFetchPromise;
+  try {
+    return await currentFetchPromise;
+  } finally {
+    if (officialResultsInFlight === currentFetchPromise) {
+      officialResultsInFlight = null;
     }
   }
-
-  if (!results.length) {
-    diagnostics.finishedAt = new Date().toISOString();
-    const unavailableError = createOfficialError("official_results_unavailable", {
-      diagnostics,
-    });
-    throw unavailableError;
-  }
-
-  const orderIndex = new Map(gameIds.map((gameId, idx) => [gameId, idx]));
-  results.sort((a, b) => (orderIndex.get(a.gameId) ?? 999) - (orderIndex.get(b.gameId) ?? 999));
-
-  diagnostics.source = source;
-  diagnostics.finishedAt = new Date().toISOString();
-  officialResultsCache.value = results;
-  officialResultsCache.expiresAt = Date.now() + OFFICIAL_RESULTS_TTL_MS;
-  officialResultsCache.source = source;
-  officialResultsCache.diagnostics = diagnostics;
-  return results;
 };
 
 app.use(
