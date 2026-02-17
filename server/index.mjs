@@ -21,6 +21,10 @@ const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 
 const OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS = Number(
   process.env.OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS || 5 * 60 * 1000
 );
+const OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS = Number(
+  process.env.OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS || 10000
+);
+const FORCE_REFRESH_CLEANUP_INTERVAL_MS = 60 * 1000;
 const DEFAULT_OFFICIAL_LOOKUP_URLS = ["https://lottolookup.com.br/api"];
 
 const normalizeOfficialBaseUrl = (raw, fallback) => {
@@ -218,7 +222,38 @@ const officialResultsCache = {
 let officialResultsInFlight = null;
 
 const forceRefreshByIp = new Map();
+let lastForceRefreshCleanupAt = 0;
 const parseWarningsSeen = new Set();
+
+const cleanupForceRefreshByIp = (now) => {
+  const maxTrackedIps = Number.isFinite(OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS)
+    ? Math.max(500, OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS)
+    : 10000;
+  const shouldCleanupByInterval = now - lastForceRefreshCleanupAt >= FORCE_REFRESH_CLEANUP_INTERVAL_MS;
+  const shouldCleanupByPressure = forceRefreshByIp.size >= maxTrackedIps;
+
+  if (!shouldCleanupByInterval && !shouldCleanupByPressure) {
+    return;
+  }
+
+  lastForceRefreshCleanupAt = now;
+
+  if (OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS > 0) {
+    const expirationThreshold = now - OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS;
+    for (const [ip, ts] of forceRefreshByIp.entries()) {
+      if (ts < expirationThreshold) {
+        forceRefreshByIp.delete(ip);
+      }
+    }
+  }
+
+  // Cap memory growth even under IP spray attacks by evicting oldest entries.
+  while (forceRefreshByIp.size > maxTrackedIps) {
+    const oldestKey = forceRefreshByIp.keys().next().value;
+    if (!oldestKey) break;
+    forceRefreshByIp.delete(oldestKey);
+  }
+};
 
 const canUseForceRefresh = (clientIp) => {
   if (!clientIp) return false;
@@ -230,17 +265,23 @@ const canUseForceRefresh = (clientIp) => {
     return false;
   }
 
-  forceRefreshByIp.set(clientIp, now);
+  cleanupForceRefreshByIp(now);
 
-  // Opportunistic cleanup to avoid unbounded map growth.
-  if (forceRefreshByIp.size > 2000) {
-    const threshold = now - OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS;
-    for (const [ip, ts] of forceRefreshByIp.entries()) {
-      if (ts < threshold) {
-        forceRefreshByIp.delete(ip);
-      }
+  const maxTrackedIps = Number.isFinite(OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS)
+    ? Math.max(500, OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS)
+    : 10000;
+  if (!forceRefreshByIp.has(clientIp) && forceRefreshByIp.size >= maxTrackedIps) {
+    const oldestKey = forceRefreshByIp.keys().next().value;
+    if (oldestKey) {
+      forceRefreshByIp.delete(oldestKey);
     }
   }
+
+  // Refresh insertion order to keep recent IPs and evict stale/old keys first.
+  if (forceRefreshByIp.has(clientIp)) {
+    forceRefreshByIp.delete(clientIp);
+  }
+  forceRefreshByIp.set(clientIp, now);
 
   return true;
 };

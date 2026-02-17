@@ -13,6 +13,7 @@ Prerequisito: Node.js 20+
    - `ALLOWED_ORIGINS=capacitor://localhost,http://localhost:3000,http://localhost,https://localhost` (somente origens explicitas; `*` e ignorado)
    - `OFFICIAL_RESULTS_TTL_MS=120000` (opcional; cache dos resultados oficiais no backend)
    - `OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS=300000` (opcional; intervalo minimo por IP para `?force=1`)
+   - `OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS=10000` (opcional; limite de IPs rastreados para force refresh, protege memoria contra IP spray)
    - `OFFICIAL_API_TIMEOUT_MS=12000` (opcional; timeout de consulta da API oficial)
    - `OFFICIAL_CAIXA_BASE_URL=https://servicebus2.caixa.gov.br/portaldeloterias/api` (opcional; origem oficial direta da Caixa)
    - `OFFICIAL_CAIXA_PROXY_KEY=` (opcional; chave para autenticar no proxy Cloudflare)
@@ -43,6 +44,7 @@ Crie 2 services no Render apontando para o mesmo repositorio:
      - `ALLOWED_ORIGINS` = `capacitor://localhost,http://localhost:3000,http://localhost,https://localhost,https://SEU-FRONTEND.onrender.com` (nao usar `*`)
      - `OFFICIAL_RESULTS_TTL_MS` = opcional (default `120000`)
      - `OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS` = opcional (default `300000`)
+     - `OFFICIAL_FORCE_REFRESH_MAX_TRACKED_IPS` = opcional (default `10000`)
      - `OFFICIAL_API_TIMEOUT_MS` = opcional (default `12000`)
      - `OFFICIAL_CAIXA_BASE_URL` = opcional (default `https://servicebus2.caixa.gov.br/portaldeloterias/api`)
      - `OFFICIAL_CAIXA_PROXY_KEY` = opcional (obrigatoria apenas se `OFFICIAL_CAIXA_BASE_URL` apontar para Worker proxy)
@@ -86,10 +88,13 @@ Passos:
    `npx wrangler deploy --config cloudflare/caixa-official-proxy/wrangler.toml`
 3. (Recomendado) Definir segredo no Worker:
    `npx wrangler secret put PROXY_KEY --config cloudflare/caixa-official-proxy/wrangler.toml`
-4. Configurar no backend Render:
+4. (Opcional) Ativar header de debug de upstream apenas quando estiver diagnosticando:
+   - `npx wrangler secret put DEBUG_PROXY_HEADERS --config cloudflare/caixa-official-proxy/wrangler.toml` e valor `1`
+   - Em producao, manter vazio/desligado para nao expor host de upstream
+5. Configurar no backend Render:
    - `OFFICIAL_CAIXA_BASE_URL=https://SEU-WORKER.workers.dev/portaldeloterias/api`
    - `OFFICIAL_CAIXA_PROXY_KEY=mesmo_valor_do_PROXY_KEY`
-5. Forcar teste:
+6. Forcar teste:
    `GET /api/official-results?force=1`
 
 ## Scripts

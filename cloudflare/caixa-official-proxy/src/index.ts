@@ -2,6 +2,7 @@ interface Env {
   PROXY_KEY?: string;
   REQUEST_TIMEOUT_MS?: string;
   UPSTREAM_BASE_URL?: string;
+  DEBUG_PROXY_HEADERS?: string;
 }
 
 const DEFAULT_UPSTREAM_BASE_URL = "https://servicebus2.caixa.gov.br";
@@ -38,6 +39,23 @@ const normalizeBaseUrl = (raw: string | undefined): string => {
   return base.replace(/\/+$/, "");
 };
 
+const textEncoder = new TextEncoder();
+
+const constantTimeEquals = (left: string, right: string): boolean => {
+  const leftBytes = textEncoder.encode(left);
+  const rightBytes = textEncoder.encode(right);
+  const maxLength = Math.max(leftBytes.length, rightBytes.length);
+
+  let diff = leftBytes.length ^ rightBytes.length;
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftByte = index < leftBytes.length ? leftBytes[index] : 0;
+    const rightByte = index < rightBytes.length ? rightBytes[index] : 0;
+    diff |= leftByte ^ rightByte;
+  }
+
+  return diff === 0;
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -68,7 +86,7 @@ export default {
     }
 
     const providedKey = (request.headers.get("X-Proxy-Key") || "").trim();
-    if (!providedKey || providedKey !== requiredKey) {
+    if (!providedKey || !constantTimeEquals(providedKey, requiredKey)) {
       return json(401, { error: "unauthorized" });
     }
 
@@ -106,7 +124,9 @@ export default {
       });
 
       outHeaders.set("Cache-Control", "no-store");
-      outHeaders.set("X-Proxy-Upstream-Host", new URL(upstreamUrl).hostname);
+      if (env.DEBUG_PROXY_HEADERS === "1") {
+        outHeaders.set("X-Proxy-Upstream-Host", new URL(upstreamUrl).hostname);
+      }
 
       return new Response(upstreamResponse.body, {
         status: upstreamResponse.status,
