@@ -22,10 +22,13 @@ jobs:
           fi
 
       - name: Trigger frontend deploy hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND != '' }}
         env:
           HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND }}
         run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "Frontend deploy hook not configured; skipping."
+            exit 0
+          fi
           status="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$HOOK_URL" || echo "000")"
           if [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
             echo "Frontend deploy hook accepted (HTTP $status)."
@@ -34,10 +37,13 @@ jobs:
           fi
 
       - name: Trigger backend deploy hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND != '' }}
         env:
           HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND }}
         run: |
+          if [ -z "$HOOK_URL" ]; then
+            echo "Backend deploy hook not configured; skipping."
+            exit 0
+          fi
           status="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$HOOK_URL" || echo "000")"
           if [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
             echo "Backend deploy hook accepted (HTTP $status)."
@@ -46,10 +52,20 @@ jobs:
           fi
 
       - name: Trigger legacy deploy hook
-        if: ${{ secrets.RENDER_WEBHOOK != '' && secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND == '' && secrets.RENDER_DEPLOY_HOOK_URL_BACKEND == '' }}
         env:
-          HOOK_URL: ${{ secrets.RENDER_WEBHOOK }}
+          RENDER_DEPLOY_HOOK_URL_FRONTEND: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND }}
+          RENDER_DEPLOY_HOOK_URL_BACKEND: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND }}
+          RENDER_WEBHOOK: ${{ secrets.RENDER_WEBHOOK }}
         run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_URL_FRONTEND" ] || [ -n "$RENDER_DEPLOY_HOOK_URL_BACKEND" ]; then
+            echo "Legacy deploy hook skipped because dedicated frontend/backend hooks are configured."
+            exit 0
+          fi
+          if [ -z "$RENDER_WEBHOOK" ]; then
+            echo "Legacy deploy hook not configured; skipping."
+            exit 0
+          fi
+          HOOK_URL="$RENDER_WEBHOOK"
           status="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$HOOK_URL" || echo "000")"
           if [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
             echo "Legacy deploy hook accepted (HTTP $status)."
