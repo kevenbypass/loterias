@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(true);
   
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -170,6 +171,34 @@ const App: React.FC = () => {
 
   return (
       <Layout currentView={currentView} onNavigate={setCurrentView} isDarkMode={isDarkMode} toggleTheme={toggleTheme}>
+      {showDisclaimerModal && (
+        <div className="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="ticket-cut w-full max-w-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_34px_110px_-62px_var(--shadow)] p-6 md:p-7 animate-zoom-in">
+            <h2 className="font-display text-2xl md:text-3xl font-black tracking-tight text-[color:var(--ink)]">
+              Aviso Importante
+            </h2>
+            <p className="mt-3 text-sm md:text-base leading-relaxed text-[color:var(--muted)]">
+              Este site e apenas um gerador de numeros para apostas das Loterias Caixa.
+            </p>
+            <div className="mt-4 rounded-2xl bg-[color:var(--surface-2)] border border-[color:var(--border)] p-4">
+              <p className="text-sm leading-relaxed text-[color:var(--ink)]">
+                Nao somos afiliados a Caixa Economica Federal e nao operamos apostas, pagamentos, sorteios oficiais ou
+                qualquer servico vinculado ao sistema oficial da Caixa.
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-[color:var(--muted)]">
+                Para apostar de forma oficial, utilize somente os canais autorizados da Caixa.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDisclaimerModal(false)}
+              className="mt-6 w-full px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-extrabold tracking-wide shadow-[0_18px_54px_-34px_rgba(16,185,129,0.9)] active:scale-[0.99]"
+            >
+              Entendi, continuar
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Toast Notification */}
       <div className={`fixed top-20 right-1/2 translate-x-1/2 md:translate-x-0 md:right-6 md:top-24 z-[70] transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
