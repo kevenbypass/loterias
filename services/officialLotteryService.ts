@@ -1,9 +1,63 @@
 import { LotteryResult } from "../types";
 
+const OFFICIAL_CAIXA_HOME_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api/home/ultimos-resultados";
 const FALLBACK_PROD_API_BASE_URL = "https://loterias-jrky.onrender.com";
 const rawBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
 const apiBaseUrl = (rawBaseUrl || (import.meta.env.PROD ? FALLBACK_PROD_API_BASE_URL : "")).replace(/\/+$/, "");
 const apiUrl = (path: string) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
+
+const GAME_ORDER = [
+  "mega-sena",
+  "lotofacil",
+  "quina",
+  "lotomania",
+  "timemania",
+  "dupla-sena",
+  "dia-de-sorte",
+  "super-sete",
+  "milionaria",
+  "federal",
+] as const;
+
+const OFFICIAL_HOME_KEYS: Record<(typeof GAME_ORDER)[number], string> = {
+  "mega-sena": "megasena",
+  lotofacil: "lotofacil",
+  quina: "quina",
+  lotomania: "lotomania",
+  timemania: "timemania",
+  "dupla-sena": "duplasena",
+  "dia-de-sorte": "diaDeSorte",
+  "super-sete": "superSete",
+  milionaria: "maisMilionaria",
+  federal: "federal",
+};
+
+const MONTH_NAMES_PT = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
+interface OfficialHomeEntry {
+  acumulado?: boolean;
+  dataApuracao?: string;
+  dataProximoConcurso?: string;
+  dezenas?: unknown;
+  mesDaSorte?: string;
+  numeroDoConcurso?: number | string;
+  timeDoCoracao?: string;
+  trevosSorteados?: unknown;
+  valorEstimadoProximoConcurso?: number | string;
+}
 
 interface BackendOfficialResultsResponse {
   updatedAt?: string;
@@ -26,13 +80,106 @@ const isLotteryResult = (value: unknown): value is LotteryResult => {
   );
 };
 
-export const fetchAllResults = async ({
-  force = false,
-}: {
-  force?: boolean;
-} = {}): Promise<LotteryResult[]> => {
-  const query = force ? "?force=1" : "";
+const parseNumericList = (values: unknown): number[] => {
+  if (!Array.isArray(values)) return [];
 
+  const parsed = values
+    .map((value) => Number.parseInt(String(value), 10))
+    .filter((value) => Number.isFinite(value));
+  return parsed;
+};
+
+const monthNameToNumber = (monthName: unknown): number | null => {
+  if (typeof monthName !== "string") return null;
+
+  const normalized = monthName.trim().toLowerCase();
+  const idx = MONTH_NAMES_PT.findIndex((month) => month.toLowerCase() === normalized);
+  return idx >= 0 ? idx + 1 : null;
+};
+
+const formatCurrencyBRL = (value: unknown): string => {
+  const numericValue = Number(value);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number.isFinite(numericValue) ? numericValue : 0);
+};
+
+const mapOfficialHomeResponse = (
+  gameId: (typeof GAME_ORDER)[number],
+  entry: OfficialHomeEntry
+): LotteryResult | null => {
+  const numbers = parseNumericList(entry.dezenas);
+  if (!numbers.length) return null;
+
+  let specialNumbers: number[] | undefined;
+  let extraString: string | undefined;
+
+  if (gameId === "milionaria") {
+    const trevos = parseNumericList(entry.trevosSorteados);
+    if (trevos.length) specialNumbers = trevos;
+  }
+
+  if (gameId === "dia-de-sorte") {
+    const monthNumber = monthNameToNumber(entry.mesDaSorte);
+    if (monthNumber) specialNumbers = [monthNumber];
+  }
+
+  if (gameId === "timemania" && typeof entry.timeDoCoracao === "string") {
+    extraString = entry.timeDoCoracao.trim() || undefined;
+  }
+
+  return {
+    gameId,
+    contestNumber: String(entry.numeroDoConcurso ?? ""),
+    date: typeof entry.dataApuracao === "string" ? entry.dataApuracao : "",
+    numbers,
+    specialNumbers,
+    extraString,
+    accumulated: Boolean(entry.acumulado),
+    nextPrize: formatCurrencyBRL(entry.valorEstimadoProximoConcurso),
+    nextDate: typeof entry.dataProximoConcurso === "string" ? entry.dataProximoConcurso : "",
+  };
+};
+
+const fetchFromOfficialHome = async (force = false): Promise<LotteryResult[]> => {
+  const cacheBuster = force ? `?ts=${Date.now()}` : "";
+  const response = await fetch(`${OFFICIAL_CAIXA_HOME_URL}${cacheBuster}`, {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`official_results_caixa_failed_${response.status}`);
+  }
+
+  const payload = (await response.json()) as Record<string, unknown> | null;
+  if (!payload || typeof payload !== "object") {
+    throw new Error("official_results_caixa_invalid_payload");
+  }
+
+  const results: LotteryResult[] = [];
+  for (const gameId of GAME_ORDER) {
+    const key = OFFICIAL_HOME_KEYS[gameId];
+    const candidate = payload[key];
+    if (!candidate || typeof candidate !== "object") continue;
+
+    const mapped = mapOfficialHomeResponse(gameId, candidate as OfficialHomeEntry);
+    if (mapped) results.push(mapped);
+  }
+
+  if (!results.length) {
+    throw new Error("official_results_caixa_empty");
+  }
+
+  return results;
+};
+
+const fetchFromBackend = async (force = false): Promise<LotteryResult[]> => {
+  const query = force ? "?force=1" : "";
   const response = await fetch(apiUrl(`/api/official-results${query}`), {
     method: "GET",
     cache: "no-store",
@@ -47,8 +194,8 @@ export const fetchAllResults = async ({
   const resultArray = Array.isArray(payload)
     ? payload
     : payload && typeof payload === "object" && Array.isArray((payload as BackendOfficialResultsResponse).results)
-    ? (payload as BackendOfficialResultsResponse).results
-    : null;
+      ? (payload as BackendOfficialResultsResponse).results
+      : null;
 
   if (!resultArray) {
     throw new Error("official_results_invalid_payload");
@@ -60,4 +207,17 @@ export const fetchAllResults = async ({
   }
 
   return filtered;
+};
+
+export const fetchAllResults = async ({
+  force = false,
+}: {
+  force?: boolean;
+} = {}): Promise<LotteryResult[]> => {
+  try {
+    return await fetchFromOfficialHome(force);
+  } catch (officialError) {
+    console.warn("Official Caixa request failed in frontend, falling back to backend API:", officialError);
+    return fetchFromBackend(force);
+  }
 };
