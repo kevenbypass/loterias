@@ -2,6 +2,7 @@ import React from "react";
 import { Bookmark, Copy, Trash2, Shield } from "lucide-react";
 import { SavedGame } from "../types";
 import { GAMES, MONTH_NAMES } from "../constants";
+import { sanitizeGameColor } from "../utils/gameColors";
 
 interface SavedViewProps {
   savedGames: SavedGame[];
@@ -38,6 +39,7 @@ const SavedView: React.FC<SavedViewProps> = ({ savedGames, onDelete, onCopy }) =
         <div className="grid gap-5">
           {savedGames.map((game) => {
             const gameDef = GAMES.find((g) => g.id === game.gameId) || GAMES[0];
+            const gameColor = sanitizeGameColor(gameDef.color);
             const dense = game.numbers.length > 20;
 
             return (
@@ -45,14 +47,14 @@ const SavedView: React.FC<SavedViewProps> = ({ savedGames, onDelete, onCopy }) =
                 key={game.id}
                 className="ticket-cut relative overflow-hidden bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_24px_90px_-68px_var(--shadow)]"
               >
-                <div className={`h-2 w-full bg-gradient-to-r from-${gameDef.color}-500 to-${gameDef.color}-600`} />
+                <div className={`h-2 w-full bg-gradient-to-r from-${gameColor}-500 to-${gameColor}-600`} />
 
                 <div className="p-5 md:p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest uppercase bg-${gameDef.color}-100 dark:bg-${gameDef.color}-500/20 text-${gameDef.color}-700 dark:text-${gameDef.color}-300 border border-${gameDef.color}-200/60 dark:border-${gameDef.color}-500/30`}
+                          className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest uppercase bg-${gameColor}-100 dark:bg-${gameColor}-500/20 text-${gameColor}-700 dark:text-${gameColor}-300 border border-${gameColor}-200/60 dark:border-${gameColor}-500/30`}
                         >
                           {gameDef.name}
                         </span>

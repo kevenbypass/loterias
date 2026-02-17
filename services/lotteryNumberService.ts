@@ -5,26 +5,37 @@ export const generateRandomNumbers = (
   exclude: number[] = [],
   allowRepeats: boolean = false
 ): number[] => {
+  const start = Math.min(min, max);
+  const end = Math.max(min, max);
+  const excludeSet = new Set(
+    exclude.filter((value) => Number.isInteger(value) && value >= start && value <= end)
+  );
+  const availableNumbers = Array.from({ length: end - start + 1 }, (_, idx) => start + idx).filter(
+    (value) => !excludeSet.has(value)
+  );
+
   if (allowRepeats) {
+    if (!availableNumbers.length) return [];
+
     const result: number[] = [];
     for (let i = 0; i < count; i++) {
-      result.push(Math.floor(Math.random() * (max - min + 1)) + min);
+      const randomIdx = Math.floor(Math.random() * availableNumbers.length);
+      result.push(availableNumbers[randomIdx]);
     }
     return result;
   }
 
-  const numbers = new Set<number>(exclude);
-
-  if (max - min + 1 < count) {
-    return Array.from({ length: count }, (_, i) => min + i);
+  if (availableNumbers.length <= count) {
+    return availableNumbers;
   }
 
-  while (numbers.size < count + exclude.length) {
-    const num = Math.floor(Math.random() * (max - min + 1)) + min;
-    numbers.add(num);
+  const pool = [...availableNumbers];
+  const result: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const randomIdx = Math.floor(Math.random() * pool.length);
+    result.push(pool[randomIdx]);
+    pool.splice(randomIdx, 1);
   }
 
-  const result = Array.from(numbers).filter((n) => !exclude.includes(n));
   return result.sort((a, b) => a - b);
 };
-

@@ -48,6 +48,23 @@ Depois de publicar o backend, pegue a URL (ex.: `https://loterias-api.onrender.c
 - `.env.local`:
   - `VITE_API_BASE_URL=https://loterias-api.onrender.com`
 
+## Deploy automatico (GitHub -> Render)
+
+Este repo inclui o workflow `.github/workflows/render-auto-deploy.yml`, que dispara deploy no Render a cada push na branch `main`.
+
+Configure os secrets no GitHub (`Settings -> Secrets and variables -> Actions`):
+
+- `RENDER_DEPLOY_HOOK_URL_FRONTEND`: Deploy Hook da Static Site
+- `RENDER_DEPLOY_HOOK_URL_BACKEND`: Deploy Hook do Web Service
+- (legado, opcional) `RENDER_WEBHOOK`: hook unico (usado apenas se os 2 acima nao existirem)
+
+Como pegar os hooks no Render:
+1. Abra o service no Render.
+2. `Settings -> Deploy Hook`.
+3. Crie/copiei a URL e salve no secret correspondente no GitHub.
+
+Observacao: se seu service Render ja estiver com Auto-Deploy via Git habilitado, o hook pode ser opcional.
+
 ## Proxy oficial da Caixa (Cloudflare Worker)
 
 Use se o backend no Render estiver caindo direto para `lottolookup` por bloqueio/rede na Caixa.

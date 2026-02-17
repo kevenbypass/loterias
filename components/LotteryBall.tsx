@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeGameColor } from "../utils/gameColors";
 
 interface LotteryBallProps {
   number: number;
@@ -19,7 +20,7 @@ const LotteryBall: React.FC<LotteryBallProps> = ({
 }) => {
   const formattedNumber = number.toString().padStart(2, '0');
   const isThreeDigits = formattedNumber.length > 2;
-  const colorName = color === 'emerald' ? 'emerald' : color;
+  const colorName = sanitizeGameColor(color);
 
   const getDelayClass = (rawDelay: number) => {
     const idx = Number.isFinite(rawDelay) ? Math.round(rawDelay) : 0;

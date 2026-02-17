@@ -1,4 +1,5 @@
 import { LotteryResult } from "../types";
+import { MOCK_RESULTS } from "../constants";
 
 const OFFICIAL_CAIXA_HOME_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api/home/ultimos-resultados";
 const FALLBACK_PROD_API_BASE_URL = "https://loterias-jrky.onrender.com";
@@ -218,6 +219,11 @@ export const fetchAllResults = async ({
     return await fetchFromOfficialHome(force);
   } catch (officialError) {
     console.warn("Official Caixa request failed in frontend, falling back to backend API:", officialError);
-    return fetchFromBackend(force);
+    try {
+      return await fetchFromBackend(force);
+    } catch (backendError) {
+      console.warn("Backend API failed in frontend, using MOCK_RESULTS fallback:", backendError);
+      return MOCK_RESULTS;
+    }
   }
 };

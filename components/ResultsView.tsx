@@ -4,6 +4,7 @@ import { GAMES, MONTH_NAMES } from "../constants";
 import { LotteryResult } from "../types";
 import { fetchAllResults } from "../services/officialLotteryService";
 import LotteryBall from "./LotteryBall";
+import { sanitizeGameColor } from "../utils/gameColors";
 
 const ResultsView: React.FC = () => {
   const [results, setResults] = useState<LotteryResult[]>([]);
@@ -144,11 +145,13 @@ const ResultsView: React.FC = () => {
         {results.map((result) => {
           const gameDef = GAMES.find((g) => g.id === result.gameId);
           if (!gameDef) return null;
+          const gameColor = sanitizeGameColor(gameDef.color);
+          const specialColor = sanitizeGameColor(gameDef.specialRange?.color || "emerald");
 
           return (
             <div key={result.gameId} className="relative">
               <div className="ticket-cut relative overflow-hidden bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_26px_100px_-74px_var(--shadow)]">
-                <div className={`h-2 w-full bg-gradient-to-r from-${gameDef.color}-500 to-${gameDef.color}-600`} />
+                <div className={`h-2 w-full bg-gradient-to-r from-${gameColor}-500 to-${gameColor}-600`} />
 
                 <div className="p-5 md:p-7">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -176,7 +179,7 @@ const ResultsView: React.FC = () => {
                   <div className="mt-6 ticket-cut bg-[color:var(--surface-2)] border border-[color:var(--border)] p-5 md:p-6">
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
                       {result.numbers.map((n, i) => (
-                        <LotteryBall key={i} number={n} color={gameDef.color} size="small" delay={i} />
+                        <LotteryBall key={i} number={n} color={gameColor} size="small" delay={i} />
                       ))}
 
                       {result.specialNumbers && result.specialNumbers.length > 0 && (
@@ -188,7 +191,7 @@ const ResultsView: React.FC = () => {
                             <LotteryBall
                               key={`sp-${i}`}
                               number={n}
-                              color={gameDef.specialRange?.color || "emerald"}
+                              color={specialColor}
                               size="small"
                               label={gameDef.id === "dia-de-sorte" ? MONTH_NAMES[n - 1]?.substring(0, 3) : undefined}
                               labelPosition="bottom"

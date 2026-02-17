@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { GAMES, MONTH_NAMES } from "../constants";
 import LotteryBall from "./LotteryBall";
+import { sanitizeGameColor } from "../utils/gameColors";
 
 interface HomeViewProps {
   selectedGameId: string;
@@ -48,6 +49,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedGame = GAMES.find((g) => g.id === selectedGameId) || GAMES[0];
+  const selectedGameColor = sanitizeGameColor(selectedGame.color);
   const filteredGames = GAMES.filter((g) =>
     g.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -122,7 +124,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span
-                      className={`inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-${selectedGame.color}-100 dark:bg-${selectedGame.color}-500/20 text-${selectedGame.color}-600 dark:text-${selectedGame.color}-400`}
+                      className={`inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-${selectedGameColor}-100 dark:bg-${selectedGameColor}-500/20 text-${selectedGameColor}-600 dark:text-${selectedGameColor}-400`}
                     >
                       <Clover size={16} />
                     </span>
@@ -163,6 +165,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                     <div className="max-h-64 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                       {filteredGames.map((game) => {
                         const active = selectedGameId === game.id;
+                        const gameColor = sanitizeGameColor(game.color);
                         return (
                           <button
                             key={game.id}
@@ -181,7 +184,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                             <span
                               className={`w-2.5 h-2.5 rounded-full ${
                                 active
-                                  ? `bg-${game.color}-500 shadow-[0_0_14px_currentColor]`
+                                  ? `bg-${gameColor}-500 shadow-[0_0_14px_currentColor]`
                                   : "bg-black/15 dark:bg-white/15"
                               }`}
                             />
@@ -264,7 +267,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                           <LotteryBall
                             key={`${selectedGameId}-${num}-${idx}`}
                             number={num}
-                            color={selectedGame.color}
+                            color={selectedGameColor}
                             delay={idx}
                             label={label}
                             labelPosition="top"
@@ -285,7 +288,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                               {selectedGame.specialRange?.label}
                             </span>
                             <span
-                              className={`font-mono font-black text-${selectedGame.color}-600 dark:text-${selectedGame.color}-300`}
+                              className={`font-mono font-black text-${selectedGameColor}-600 dark:text-${selectedGameColor}-300`}
                             >
                               {selectedGame.id === "dia-de-sorte"
                                 ? MONTH_NAMES[num - 1]?.substring(0, 3).toUpperCase()

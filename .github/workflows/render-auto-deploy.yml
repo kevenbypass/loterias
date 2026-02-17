@@ -1,0 +1,41 @@
+name: Render Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  trigger-render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate deploy hook configuration
+        env:
+          RENDER_DEPLOY_HOOK_URL_FRONTEND: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND }}
+          RENDER_DEPLOY_HOOK_URL_BACKEND: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND }}
+          RENDER_WEBHOOK: ${{ secrets.RENDER_WEBHOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL_FRONTEND" ] && [ -z "$RENDER_DEPLOY_HOOK_URL_BACKEND" ] && [ -z "$RENDER_WEBHOOK" ]; then
+            echo "::warning::No Render deploy hook secret found. Configure RENDER_DEPLOY_HOOK_URL_FRONTEND and/or RENDER_DEPLOY_HOOK_URL_BACKEND (or legacy RENDER_WEBHOOK)."
+          fi
+
+      - name: Trigger frontend deploy hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND != '' }}
+        env:
+          HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND }}
+        run: curl -fsS -X POST "$HOOK_URL"
+
+      - name: Trigger backend deploy hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND != '' }}
+        env:
+          HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND }}
+        run: curl -fsS -X POST "$HOOK_URL"
+
+      - name: Trigger legacy deploy hook
+        if: ${{ secrets.RENDER_WEBHOOK != '' && secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND == '' && secrets.RENDER_DEPLOY_HOOK_URL_BACKEND == '' }}
+        env:
+          HOOK_URL: ${{ secrets.RENDER_WEBHOOK }}
+        run: curl -fsS -X POST "$HOOK_URL"
+
