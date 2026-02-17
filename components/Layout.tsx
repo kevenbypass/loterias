@@ -90,6 +90,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDa
         {children}
       </main>
 
+      {/* Legal footer */}
+      <footer className="relative z-10 mx-auto max-w-5xl w-full px-4 md:px-6 pb-24 md:pb-8">
+        <div className="ticket-cut bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-3 md:px-5 md:py-4 text-center shadow-[0_16px_50px_-40px_var(--shadow)]">
+          <p className="text-[11px] md:text-xs leading-relaxed text-[color:var(--muted)] font-semibold">
+            Este site e apenas um gerador de numeros para apostas das Loterias Caixa, sem qualquer vinculo com a Caixa
+            Economica Federal. Nao realizamos apostas, pagamentos ou operacoes oficiais de loteria.
+          </p>
+        </div>
+      </footer>
+
       {/* Mobile nav */}
       <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50">
         <div className="ticket-cut flex items-center justify-between gap-2 px-2 py-2 backdrop-blur-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_20px_56px_-28px_var(--shadow)]">
