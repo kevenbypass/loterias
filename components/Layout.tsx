@@ -97,6 +97,23 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isDa
             Este site e apenas um gerador de numeros para apostas das Loterias Caixa, sem qualquer vinculo com a Caixa
             Economica Federal. Nao realizamos apostas, pagamentos ou operacoes oficiais de loteria.
           </p>
+          <div className="mt-3 flex items-center justify-center gap-3 text-[11px] md:text-xs font-bold">
+            <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/como-jogar/">
+              Como jogar
+            </a>
+            <span aria-hidden="true" className="text-[color:var(--muted)]">
+              |
+            </span>
+            <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/resultados/">
+              Resultados
+            </a>
+            <span aria-hidden="true" className="text-[color:var(--muted)]">
+              |
+            </span>
+            <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/faq/">
+              FAQ
+            </a>
+          </div>
         </div>
       </footer>
 
