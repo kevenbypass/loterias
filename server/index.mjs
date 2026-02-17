@@ -743,16 +743,44 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
   }
 };
 
+const API_ONLY_CSP = [
+  "default-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join("; ");
+
+const API_ONLY_PERMISSIONS_POLICY = [
+  "accelerometer=()",
+  "autoplay=()",
+  "camera=()",
+  "display-capture=()",
+  "encrypted-media=()",
+  "fullscreen=()",
+  "geolocation=()",
+  "gyroscope=()",
+  "magnetometer=()",
+  "microphone=()",
+  "midi=()",
+  "payment=()",
+  "usb=()",
+].join(", ");
+
 app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "same-site" },
+    frameguard: { action: "sameorigin" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   })
 );
 
-// API-only server hardening header.
+// API-only hardening headers. Explicitly set so external scanners can validate them.
 app.use((_req, res, next) => {
-  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  res.setHeader("Content-Security-Policy", API_ONLY_CSP);
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", API_ONLY_PERMISSIONS_POLICY);
   next();
 });
 
