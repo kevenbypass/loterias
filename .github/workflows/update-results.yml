@@ -1,0 +1,79 @@
+name: Update Lottery Results
+
+on:
+  schedule:
+    # 10:00, 12:00, 14:00, 16:00, 18:00, 20:00 BRT (UTC-3)
+    - cron: "0 13 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 17 * * *"
+    - cron: "0 19 * * *"
+    - cron: "0 21 * * *"
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-lottery-results
+  cancel-in-progress: false
+
+jobs:
+  update-results:
+    runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ vars.RESULTS_API_URL || secrets.RESULTS_API_URL || 'https://loterias-jrky.onrender.com/api/official-results' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Update results file
+        run: node scripts/update-lottery-results.mjs
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet -- public/data/results.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure Git author
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "Copilot Bot"
+          git config user.email "copilot@github.com"
+
+      - name: Commit results update
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git add public/data/results.json
+          git commit -m "chore: update lottery results [automated]" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+
+      - name: Push commit
+        if: steps.changes.outputs.changed == 'true'
+        run: git push origin HEAD:main
+
+      - name: Trigger Render deploy webhook
+        if: steps.changes.outputs.changed == 'true' && secrets.RENDER_WEBHOOK != ''
+        env:
+          RENDER_WEBHOOK: ${{ secrets.RENDER_WEBHOOK }}
+        run: curl -fsS -X POST "$RENDER_WEBHOOK" || true
+
+      - name: Log status
+        run: |
+          if [ "${{ steps.changes.outputs.changed }}" = "true" ]; then
+            echo "Results updated and pushed."
+          else
+            echo "No result changes detected."
+          fi
