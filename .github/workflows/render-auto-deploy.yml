@@ -25,17 +25,34 @@ jobs:
         if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND != '' }}
         env:
           HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND }}
-        run: curl -fsS -X POST "$HOOK_URL"
+        run: |
+          status="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$HOOK_URL" || echo "000")"
+          if [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
+            echo "Frontend deploy hook accepted (HTTP $status)."
+          else
+            echo "::warning::Frontend deploy hook returned HTTP $status."
+          fi
 
       - name: Trigger backend deploy hook
         if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND != '' }}
         env:
           HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL_BACKEND }}
-        run: curl -fsS -X POST "$HOOK_URL"
+        run: |
+          status="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$HOOK_URL" || echo "000")"
+          if [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
+            echo "Backend deploy hook accepted (HTTP $status)."
+          else
+            echo "::warning::Backend deploy hook returned HTTP $status."
+          fi
 
       - name: Trigger legacy deploy hook
         if: ${{ secrets.RENDER_WEBHOOK != '' && secrets.RENDER_DEPLOY_HOOK_URL_FRONTEND == '' && secrets.RENDER_DEPLOY_HOOK_URL_BACKEND == '' }}
         env:
           HOOK_URL: ${{ secrets.RENDER_WEBHOOK }}
-        run: curl -fsS -X POST "$HOOK_URL"
-
+        run: |
+          status="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$HOOK_URL" || echo "000")"
+          if [ "$status" -ge 200 ] && [ "$status" -lt 400 ]; then
+            echo "Legacy deploy hook accepted (HTTP $status)."
+          else
+            echo "::warning::Legacy deploy hook returned HTTP $status."
+          fi
