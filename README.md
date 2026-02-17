@@ -4,6 +4,8 @@
 
 # Loterias (frontend + backend seguro)
 
+Projeto desenvolvido com suporte do Codex.
+
 Este projeto usa backend local/servidor para fornecer os endpoints da aplicacao (ex.: resultados oficiais) e aplicar controles de seguranca (CORS, headers, rate limit).
 
 ## Rodar local

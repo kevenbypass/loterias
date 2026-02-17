@@ -4,7 +4,7 @@ Date: 2026-02-15
 
 ## Scope
 
-Codebase: `C:\Users\keven\loterias` (GitHub: `kevenbypass/loterias`)
+Codebase: this repository (`loterias`)
 
 Primary stack:
 - Frontend: React + TypeScript + Vite
@@ -15,7 +15,7 @@ Primary stack:
 Major risks reported (third-party Tailwind CDN + weakened CSP + AI endpoint exposure/cost) were addressed:
 - The frontend no longer loads Tailwind via CDN and does not require `unsafe-inline`.
 - A strict CSP is enforced in production (while dev mode strips CSP to keep HMR working).
-- The "Sonhos IA" (Gemini) feature and its backend endpoint were removed, so it no longer consumes any AI API.
+- The legacy AI feature and its backend endpoint were removed, so it no longer consumes any AI API.
 - Official-results diagnostics and related infrastructure details are not exposed to clients.
 
 No repository-tracked secrets were found (only placeholders like `.env.example`).
@@ -71,12 +71,12 @@ None found in current code state.
   - `index.css` (Tailwind v4 import + app custom CSS)
   - `postcss.config.cjs`, `tailwind.config.cjs`
 
-#### B) Removed Sonhos IA (Gemini) integration
+#### B) Removed legacy AI integration
 
 - Change:
-  - Removed the `/api/interpret-dream` endpoint and all client UI for "Sonhos IA".
+  - Removed the `/api/interpret-dream` endpoint and all client UI for the removed AI feature.
   - Removed client-side internal key storage (`X-Internal-Key` in browser storage).
-  - Removed the `@google/genai` dependency from the project.
+  - Removed the third-party AI SDK dependency from the project.
 
 #### C) Reduced information disclosure for official results
 
