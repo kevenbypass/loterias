@@ -9,6 +9,13 @@ import HomeView from './components/HomeView';
 import ResultsView from './components/ResultsView';
 import SavedView from './components/SavedView';
 
+const generateSavedGameId = (): string => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('home');
   const [selectedGameId, setSelectedGameId] = useState<string>(GAMES[0].id);
@@ -54,7 +61,7 @@ const App: React.FC = () => {
     }
   }, [selectedGameId]);
 
-  // Initial setup only (Load saved games) - Auto-generation removed
+  // Initial setup only (load once on mount).
   useEffect(() => {
     // Remove legacy admin key from older versions (Sonhos IA removed).
     try {
@@ -67,7 +74,6 @@ const App: React.FC = () => {
     if (saved) {
       setSavedGames(JSON.parse(saved));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedGame = GAMES.find(g => g.id === selectedGameId) || GAMES[0];
@@ -136,7 +142,7 @@ const App: React.FC = () => {
 
   const saveGame = () => {
     const newSave: SavedGame = {
-      id: Date.now().toString(),
+      id: generateSavedGameId(),
       gameId: selectedGame.id,
       numbers: generatedNumbers,
       specialNumbers: specialNumbers.length > 0 ? specialNumbers : undefined,

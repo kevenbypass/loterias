@@ -3,8 +3,40 @@ import { MOCK_RESULTS } from "../constants";
 
 const OFFICIAL_CAIXA_HOME_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api/home/ultimos-resultados";
 const FALLBACK_PROD_API_BASE_URL = "https://loterias-jrky.onrender.com";
-const rawBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
-const apiBaseUrl = (rawBaseUrl || (import.meta.env.PROD ? FALLBACK_PROD_API_BASE_URL : "")).replace(/\/+$/, "");
+const parseWarningsSeen = new Set<string>();
+
+const warnParseIssueOnce = (key: string, message: string, sample?: unknown) => {
+  if (!import.meta.env.DEV || parseWarningsSeen.has(key)) return;
+  parseWarningsSeen.add(key);
+  console.warn(`[officialLotteryService] ${message}`, sample);
+};
+
+const normalizeApiBaseUrl = (rawValue: string): string => {
+  const candidate = rawValue.trim();
+  if (!candidate) return "";
+
+  try {
+    const parsed = new URL(candidate);
+    if (import.meta.env.PROD && parsed.protocol !== "https:") {
+      console.warn(
+        "[officialLotteryService] Ignoring VITE_API_BASE_URL because protocol is not https in production."
+      );
+      return "";
+    }
+
+    return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "");
+  } catch {
+    console.warn("[officialLotteryService] Ignoring invalid VITE_API_BASE_URL value.");
+    return "";
+  }
+};
+
+const rawBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "");
+const configuredApiBaseUrl = normalizeApiBaseUrl(rawBaseUrl);
+const apiBaseUrl = (configuredApiBaseUrl || (import.meta.env.PROD ? FALLBACK_PROD_API_BASE_URL : "")).replace(
+  /\/+$/,
+  ""
+);
 const apiUrl = (path: string) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
 
 const GAME_ORDER = [
@@ -81,12 +113,22 @@ const isLotteryResult = (value: unknown): value is LotteryResult => {
   );
 };
 
-const parseNumericList = (values: unknown): number[] => {
-  if (!Array.isArray(values)) return [];
+const parseNumericList = (values: unknown, fieldName = "unknown"): number[] => {
+  if (!Array.isArray(values)) {
+    warnParseIssueOnce(`not-array:${fieldName}`, `Expected array for ${fieldName}.`, values);
+    return [];
+  }
 
-  const parsed = values
-    .map((value) => Number.parseInt(String(value), 10))
-    .filter((value) => Number.isFinite(value));
+  const parsed: number[] = [];
+  for (const value of values) {
+    const asNumber = Number.parseInt(String(value), 10);
+    if (Number.isFinite(asNumber)) {
+      parsed.push(asNumber);
+    } else {
+      warnParseIssueOnce(`invalid-entry:${fieldName}`, `Invalid numeric entry in ${fieldName}.`, value);
+    }
+  }
+
   return parsed;
 };
 
@@ -110,14 +152,14 @@ const mapOfficialHomeResponse = (
   gameId: (typeof GAME_ORDER)[number],
   entry: OfficialHomeEntry
 ): LotteryResult | null => {
-  const numbers = parseNumericList(entry.dezenas);
+  const numbers = parseNumericList(entry.dezenas, `${gameId}.dezenas`);
   if (!numbers.length) return null;
 
   let specialNumbers: number[] | undefined;
   let extraString: string | undefined;
 
   if (gameId === "milionaria") {
-    const trevos = parseNumericList(entry.trevosSorteados);
+    const trevos = parseNumericList(entry.trevosSorteados, `${gameId}.trevosSorteados`);
     if (trevos.length) specialNumbers = trevos;
   }
 
@@ -192,10 +234,10 @@ const fetchFromBackend = async (force = false): Promise<LotteryResult[]> => {
 
   const payload = (await response.json()) as BackendOfficialResultsResponse | unknown;
 
-  const resultArray = Array.isArray(payload)
+  const resultArray: unknown[] | null = Array.isArray(payload)
     ? payload
     : payload && typeof payload === "object" && Array.isArray((payload as BackendOfficialResultsResponse).results)
-      ? (payload as BackendOfficialResultsResponse).results
+      ? ((payload as BackendOfficialResultsResponse).results as unknown[])
       : null;
 
   if (!resultArray) {

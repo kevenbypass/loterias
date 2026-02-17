@@ -174,6 +174,7 @@ const officialResultsCache = {
 let officialResultsInFlight = null;
 
 const forceRefreshByIp = new Map();
+const parseWarningsSeen = new Set();
 
 const canUseForceRefresh = (clientIp) => {
   if (!clientIp) return false;
@@ -208,13 +209,26 @@ const formatCurrencyBRL = (value) => {
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
 };
 
-const parseNumericList = (values) => {
-  if (!Array.isArray(values)) return [];
+const warnParseIssueOnce = (key, message, sample) => {
+  if (parseWarningsSeen.has(key)) return;
+  parseWarningsSeen.add(key);
+  console.warn(`[official-results-parser] ${message}`, sample);
+};
+
+const parseNumericList = (values, fieldName = "unknown") => {
+  if (!Array.isArray(values)) {
+    warnParseIssueOnce(`not-array:${fieldName}`, `Expected array for ${fieldName}.`, values);
+    return [];
+  }
 
   const numbers = [];
   for (const item of values) {
     const parsed = Number.parseInt(String(item), 10);
-    if (Number.isFinite(parsed)) numbers.push(parsed);
+    if (Number.isFinite(parsed)) {
+      numbers.push(parsed);
+    } else {
+      warnParseIssueOnce(`invalid-entry:${fieldName}`, `Invalid numeric entry in ${fieldName}.`, item);
+    }
   }
 
   return numbers;
@@ -232,7 +246,8 @@ const mapOfficialApiResponse = (gameId, data) => {
   const numbers = parseNumericList(
     Array.isArray(data?.listaDezenas) && data.listaDezenas.length
       ? data.listaDezenas
-      : data?.dezenasSorteadasOrdemSorteio
+      : data?.dezenasSorteadasOrdemSorteio,
+    `${gameId}.dezenas`
   );
 
   if (!numbers.length) return null;
@@ -241,7 +256,7 @@ const mapOfficialApiResponse = (gameId, data) => {
   let extraString;
 
   if (gameId === "milionaria") {
-    const trevos = parseNumericList(data?.trevosSorteados);
+    const trevos = parseNumericList(data?.trevosSorteados, `${gameId}.trevosSorteados`);
     if (trevos.length) specialNumbers = trevos;
   }
 
@@ -268,14 +283,14 @@ const mapOfficialApiResponse = (gameId, data) => {
 };
 
 const mapOfficialHomeResponse = (gameId, data) => {
-  const numbers = parseNumericList(data?.dezenas);
+  const numbers = parseNumericList(data?.dezenas, `${gameId}.dezenas`);
   if (!numbers.length) return null;
 
   let specialNumbers;
   let extraString;
 
   if (gameId === "milionaria") {
-    const trevos = parseNumericList(data?.trevosSorteados);
+    const trevos = parseNumericList(data?.trevosSorteados, `${gameId}.trevosSorteados`);
     if (trevos.length) specialNumbers = trevos;
   }
 
