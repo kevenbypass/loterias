@@ -21,11 +21,53 @@ const OFFICIAL_RESULTS_TTL_MS = Number(process.env.OFFICIAL_RESULTS_TTL_MS || 2 
 const OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS = Number(
   process.env.OFFICIAL_FORCE_REFRESH_MIN_INTERVAL_MS || 5 * 60 * 1000
 );
+const DEFAULT_OFFICIAL_LOOKUP_URLS = ["https://lottolookup.com.br/api"];
 
 const normalizeOfficialBaseUrl = (raw, fallback) => {
   const candidate = typeof raw === "string" ? raw.trim() : "";
   const base = candidate || fallback;
   return base.replace(/\/+$/, "");
+};
+
+const parseUrlList = (raw) =>
+  String(raw || "")
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const normalizeAbsoluteUrl = (raw, sourceLabel) => {
+  const candidate = typeof raw === "string" ? raw.trim() : "";
+  if (!candidate) return "";
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      console.warn(`Ignoring ${sourceLabel}: unsupported protocol.`);
+      return "";
+    }
+
+    return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "");
+  } catch {
+    console.warn(`Ignoring invalid ${sourceLabel} value.`);
+    return "";
+  }
+};
+
+const resolveLookupUrls = (configuredRaw) => {
+  const configured = parseUrlList(configuredRaw)
+    .map((value, idx) => normalizeAbsoluteUrl(value, `OFFICIAL_LOOKUP_URLS[${idx}]`))
+    .filter(Boolean);
+
+  const defaults = DEFAULT_OFFICIAL_LOOKUP_URLS.map((value, idx) =>
+    normalizeAbsoluteUrl(value, `DEFAULT_OFFICIAL_LOOKUP_URLS[${idx}]`)
+  ).filter(Boolean);
+
+  const ordered = [];
+  for (const value of [...configured, ...defaults]) {
+    if (!ordered.includes(value)) ordered.push(value);
+  }
+
+  return ordered;
 };
 
 const OFFICIAL_CAIXA_DIRECT_BASE_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api";
@@ -55,7 +97,9 @@ if (usingConfiguredProxyBase && !OFFICIAL_CAIXA_PROXY_KEY) {
 
 const OFFICIAL_CAIXA_BASE_ORIGIN = resolveUrlOrigin(OFFICIAL_API_BASE_URL, OFFICIAL_CAIXA_ORIGIN);
 const OFFICIAL_API_HOME_URL = `${OFFICIAL_API_BASE_URL}/home/ultimos-resultados`;
-const OFFICIAL_LOOKUP_URL = "https://lottolookup.com.br/api";
+const OFFICIAL_LOOKUP_URLS = resolveLookupUrls(
+  process.env.OFFICIAL_LOOKUP_URLS || process.env.OFFICIAL_LOOKUP_URL || ""
+);
 const OFFICIAL_API_SLUGS = {
   "mega-sena": "megasena",
   lotofacil: "lotofacil",
@@ -599,26 +643,40 @@ const fetchAllOfficialResultsFromHome = async (gameIds) => {
 };
 
 const fetchAllOfficialResultsFromLookup = async (gameIds) => {
-  const payload = await requestOfficialJson(OFFICIAL_LOOKUP_URL, OFFICIAL_API_TIMEOUT_MS);
-  if (!payload || typeof payload !== "object") {
-    throw new Error("official_lookup_invalid_payload");
+  let lastError = null;
+
+  for (const lookupUrl of OFFICIAL_LOOKUP_URLS) {
+    try {
+      const payload = await requestOfficialJson(lookupUrl, OFFICIAL_API_TIMEOUT_MS);
+      if (!payload || typeof payload !== "object") {
+        throw new Error("official_lookup_invalid_payload");
+      }
+
+      const results = [];
+      for (const gameId of gameIds) {
+        const lookupKey = OFFICIAL_LOOKUP_KEYS[gameId];
+        const entry = payload?.[lookupKey];
+        if (!entry || typeof entry !== "object") continue;
+
+        const mapped = mapOfficialApiResponse(gameId, entry);
+        if (mapped) results.push(mapped);
+      }
+
+      if (!results.length) {
+        throw new Error("official_lookup_empty");
+      }
+
+      return {
+        results,
+        lookupUrl,
+      };
+    } catch (error) {
+      lastError = error;
+      console.warn(`Lookup fallback endpoint failed (${lookupUrl}):`, summarizeOfficialError(error));
+    }
   }
 
-  const results = [];
-  for (const gameId of gameIds) {
-    const lookupKey = OFFICIAL_LOOKUP_KEYS[gameId];
-    const entry = payload?.[lookupKey];
-    if (!entry || typeof entry !== "object") continue;
-
-    const mapped = mapOfficialApiResponse(gameId, entry);
-    if (mapped) results.push(mapped);
-  }
-
-  if (!results.length) {
-    throw new Error("official_lookup_empty");
-  }
-
-  return results;
+  throw lastError || new Error("official_lookup_unavailable");
 };
 
 const fetchAllOfficialResultsByGame = async (gameIds) => {
@@ -703,13 +761,21 @@ const fetchAllOfficialResults = async ({ forceRefresh = false } = {}) => {
 
     if (!results.length) {
       try {
-        results = await fetchAllOfficialResultsFromLookup(gameIds);
+        const lookup = await fetchAllOfficialResultsFromLookup(gameIds);
+        results = lookup.results;
         source = "lottolookup";
-        diagnostics.providers.lottolookup = { ok: true, count: results.length };
+        diagnostics.providers.lottolookup = {
+          ok: true,
+          count: results.length,
+          url: lookup.lookupUrl,
+        };
       } catch (error) {
         const lookupError = summarizeOfficialError(error);
-        diagnostics.providers.lottolookup = { ok: false, error: lookupError };
-        console.warn("Lookup fallback endpoint failed:", lookupError);
+        diagnostics.providers.lottolookup = {
+          ok: false,
+          error: lookupError,
+          urls: OFFICIAL_LOOKUP_URLS,
+        };
       }
     }
 

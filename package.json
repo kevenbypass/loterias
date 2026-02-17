@@ -8,6 +8,8 @@
     "dev": "concurrently \"npm:dev:api\" \"npm:dev:web\"",
     "dev:web": "vite",
     "dev:api": "node server/index.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:dev": "tsc -p tsconfig.dev.json --noEmit",
     "build": "vite build",
     "preview": "vite preview"
   },

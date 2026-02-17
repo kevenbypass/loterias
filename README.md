@@ -16,7 +16,9 @@ Prerequisito: Node.js 20+
    - `OFFICIAL_API_TIMEOUT_MS=12000` (opcional; timeout de consulta da API oficial)
    - `OFFICIAL_CAIXA_BASE_URL=https://servicebus2.caixa.gov.br/portaldeloterias/api` (opcional; origem oficial direta da Caixa)
    - `OFFICIAL_CAIXA_PROXY_KEY=` (opcional; chave para autenticar no proxy Cloudflare)
-   - `VITE_API_BASE_URL=` (deixe vazio para usar proxy local do Vite)
+   - `OFFICIAL_LOOKUP_URLS=https://lottolookup.com.br/api` (opcional; lista separada por `,` ou `;` para fallback de lookup no backend)
+   - `VITE_API_BASE_URL=` (opcional; backend principal do frontend, deixe vazio para usar proxy local do Vite)
+   - `VITE_API_FALLBACK_BASE_URLS=https://loterias-jrky.onrender.com` (opcional; lista separada por `,` ou `;` para fallback do frontend)
 3. Rodar frontend + backend:
    `npm run dev`
 
@@ -44,11 +46,13 @@ Crie 2 services no Render apontando para o mesmo repositorio:
      - `OFFICIAL_API_TIMEOUT_MS` = opcional (default `12000`)
      - `OFFICIAL_CAIXA_BASE_URL` = opcional (default `https://servicebus2.caixa.gov.br/portaldeloterias/api`)
      - `OFFICIAL_CAIXA_PROXY_KEY` = opcional (obrigatoria apenas se `OFFICIAL_CAIXA_BASE_URL` apontar para Worker proxy)
+     - `OFFICIAL_LOOKUP_URLS` = opcional (default `https://lottolookup.com.br/api`, aceita lista separada por `,` ou `;`)
 
 Depois de publicar o backend, pegue a URL (ex.: `https://loterias-api.onrender.com`) e coloque no build mobile/local:
 
 - `.env.local`:
   - `VITE_API_BASE_URL=https://loterias-api.onrender.com`
+  - `VITE_API_FALLBACK_BASE_URLS=https://loterias-jrky.onrender.com`
 
 ## Deploy automatico (GitHub -> Render)
 
@@ -94,4 +98,6 @@ Passos:
 - `npm run dev`: frontend + backend em paralelo
 - `npm run dev:web`: somente Vite
 - `npm run dev:api`: somente backend
+- `npm run typecheck`: typecheck padrao (config de producao/CI)
+- `npm run typecheck:dev`: typecheck com config de desenvolvimento
 - `npm run build`: build frontend

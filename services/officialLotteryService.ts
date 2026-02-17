@@ -2,16 +2,28 @@ import { LotteryResult } from "../types";
 import { MOCK_RESULTS } from "../constants";
 
 const OFFICIAL_CAIXA_HOME_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api/home/ultimos-resultados";
-const FALLBACK_PROD_API_BASE_URL = "https://loterias-jrky.onrender.com";
+const DEFAULT_PROD_API_FALLBACK_BASE_URLS = ["https://loterias-jrky.onrender.com"];
 const parseWarningsSeen = new Set<string>();
 
-const warnParseIssueOnce = (key: string, message: string, sample?: unknown) => {
-  if (!import.meta.env.DEV || parseWarningsSeen.has(key)) return;
+const warnParseIssueOnce = (
+  key: string,
+  message: string,
+  sample?: unknown,
+  options: { critical?: boolean } = {}
+) => {
+  if (parseWarningsSeen.has(key)) return;
   parseWarningsSeen.add(key);
+  if (!import.meta.env.DEV && !options.critical) return;
   console.warn(`[officialLotteryService] ${message}`, sample);
 };
 
-const normalizeApiBaseUrl = (rawValue: string): string => {
+const parseList = (rawValue: string): string[] =>
+  rawValue
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const normalizeApiBaseUrl = (rawValue: string, sourceLabel: string): string => {
   const candidate = rawValue.trim();
   if (!candidate) return "";
 
@@ -19,25 +31,50 @@ const normalizeApiBaseUrl = (rawValue: string): string => {
     const parsed = new URL(candidate);
     if (import.meta.env.PROD && parsed.protocol !== "https:") {
       console.warn(
-        "[officialLotteryService] Ignoring VITE_API_BASE_URL because protocol is not https in production."
+        `[officialLotteryService] Ignoring ${sourceLabel} because protocol is not https in production.`
       );
       return "";
     }
 
     return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "");
   } catch {
-    console.warn("[officialLotteryService] Ignoring invalid VITE_API_BASE_URL value.");
+    console.warn(`[officialLotteryService] Ignoring invalid ${sourceLabel} value.`);
     return "";
   }
 };
 
-const rawBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "");
-const configuredApiBaseUrl = normalizeApiBaseUrl(rawBaseUrl);
-const apiBaseUrl = (configuredApiBaseUrl || (import.meta.env.PROD ? FALLBACK_PROD_API_BASE_URL : "")).replace(
-  /\/+$/,
-  ""
-);
-const apiUrl = (path: string) => (apiBaseUrl ? `${apiBaseUrl}${path}` : path);
+const pushUnique = (target: string[], value: string) => {
+  if (!target.includes(value)) target.push(value);
+};
+
+const rawApiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "");
+const configuredApiBaseUrl = normalizeApiBaseUrl(rawApiBaseUrl, "VITE_API_BASE_URL");
+
+const configuredFallbackApiBaseUrls = [
+  ...parseList(String(import.meta.env.VITE_API_FALLBACK_BASE_URLS || "")),
+  ...parseList(String(import.meta.env.VITE_API_FALLBACK_BASE_URL || "")),
+]
+  .map((value, idx) => normalizeApiBaseUrl(value, `VITE_API_FALLBACK_BASE_URLS[${idx}]`))
+  .filter(Boolean);
+
+const backendApiBaseCandidates: string[] = [];
+if (configuredApiBaseUrl) {
+  pushUnique(backendApiBaseCandidates, configuredApiBaseUrl);
+}
+
+if (import.meta.env.PROD) {
+  configuredFallbackApiBaseUrls.forEach((value) => pushUnique(backendApiBaseCandidates, value));
+  DEFAULT_PROD_API_FALLBACK_BASE_URLS.map((value, idx) =>
+    normalizeApiBaseUrl(value, `DEFAULT_PROD_API_FALLBACK_BASE_URLS[${idx}]`)
+  )
+    .filter(Boolean)
+    .forEach((value) => pushUnique(backendApiBaseCandidates, value));
+}
+
+// Keep same-origin call as last resort when app and API share the same host.
+pushUnique(backendApiBaseCandidates, "");
+
+const apiUrl = (baseUrl: string, path: string) => (baseUrl ? `${baseUrl}${path}` : path);
 
 const GAME_ORDER = [
   "mega-sena",
@@ -115,7 +152,7 @@ const isLotteryResult = (value: unknown): value is LotteryResult => {
 
 const parseNumericList = (values: unknown, fieldName = "unknown"): number[] => {
   if (!Array.isArray(values)) {
-    warnParseIssueOnce(`not-array:${fieldName}`, `Expected array for ${fieldName}.`, values);
+    warnParseIssueOnce(`not-array:${fieldName}`, `Expected array for ${fieldName}.`, values, { critical: true });
     return [];
   }
 
@@ -125,7 +162,9 @@ const parseNumericList = (values: unknown, fieldName = "unknown"): number[] => {
     if (Number.isFinite(asNumber)) {
       parsed.push(asNumber);
     } else {
-      warnParseIssueOnce(`invalid-entry:${fieldName}`, `Invalid numeric entry in ${fieldName}.`, value);
+      warnParseIssueOnce(`invalid-entry:${fieldName}`, `Invalid numeric entry in ${fieldName}.`, value, {
+        critical: true,
+      });
     }
   }
 
@@ -223,33 +262,48 @@ const fetchFromOfficialHome = async (force = false): Promise<LotteryResult[]> =>
 
 const fetchFromBackend = async (force = false): Promise<LotteryResult[]> => {
   const query = force ? "?force=1" : "";
-  const response = await fetch(apiUrl(`/api/official-results${query}`), {
-    method: "GET",
-    cache: "no-store",
-  });
+  const requestPath = `/api/official-results${query}`;
+  let lastError: unknown = null;
 
-  if (!response.ok) {
-    throw new Error(`official_results_backend_failed_${response.status}`);
+  for (const baseUrl of backendApiBaseCandidates) {
+    const targetUrl = apiUrl(baseUrl, requestPath);
+    try {
+      const response = await fetch(targetUrl, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`official_results_backend_failed_${response.status}`);
+      }
+
+      const payload = (await response.json()) as BackendOfficialResultsResponse | unknown;
+
+      const resultArray: unknown[] | null = Array.isArray(payload)
+        ? payload
+        : payload && typeof payload === "object" && Array.isArray((payload as BackendOfficialResultsResponse).results)
+          ? ((payload as BackendOfficialResultsResponse).results as unknown[])
+          : null;
+
+      if (!resultArray) {
+        throw new Error("official_results_invalid_payload");
+      }
+
+      const filtered = resultArray.filter(isLotteryResult);
+      if (!filtered.length) {
+        throw new Error("official_results_empty");
+      }
+
+      return filtered;
+    } catch (error) {
+      lastError = error;
+      if (import.meta.env.DEV) {
+        console.warn(`[officialLotteryService] Backend API attempt failed for ${targetUrl}:`, error);
+      }
+    }
   }
 
-  const payload = (await response.json()) as BackendOfficialResultsResponse | unknown;
-
-  const resultArray: unknown[] | null = Array.isArray(payload)
-    ? payload
-    : payload && typeof payload === "object" && Array.isArray((payload as BackendOfficialResultsResponse).results)
-      ? ((payload as BackendOfficialResultsResponse).results as unknown[])
-      : null;
-
-  if (!resultArray) {
-    throw new Error("official_results_invalid_payload");
-  }
-
-  const filtered = resultArray.filter(isLotteryResult);
-  if (!filtered.length) {
-    throw new Error("official_results_empty");
-  }
-
-  return filtered;
+  throw lastError instanceof Error ? lastError : new Error("official_results_backend_failed");
 };
 
 export const fetchAllResults = async ({
