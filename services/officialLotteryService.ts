@@ -3,7 +3,13 @@ import { MOCK_RESULTS } from "../constants";
 
 const OFFICIAL_CAIXA_HOME_URL = "https://servicebus2.caixa.gov.br/portaldeloterias/api/home/ultimos-resultados";
 const DEFAULT_PROD_API_FALLBACK_BASE_URLS = ["https://loterias-jrky.onrender.com"];
+const FRONTEND_RESULTS_TTL_MS = 60 * 1000;
 const parseWarningsSeen = new Set<string>();
+let frontendResultsCache: { value: LotteryResult[] | null; expiresAt: number } = {
+  value: null,
+  expiresAt: 0,
+};
+let frontendResultsInFlight: Promise<LotteryResult[]> | null = null;
 
 const warnParseIssueOnce = (
   key: string,
@@ -311,15 +317,50 @@ export const fetchAllResults = async ({
 }: {
   force?: boolean;
 } = {}): Promise<LotteryResult[]> => {
-  try {
-    return await fetchFromOfficialHome(force);
-  } catch (officialError) {
-    console.warn("Official Caixa request failed in frontend, falling back to backend API:", officialError);
+  const now = Date.now();
+  if (!force && frontendResultsCache.value && now < frontendResultsCache.expiresAt) {
+    return frontendResultsCache.value;
+  }
+
+  if (!force && frontendResultsInFlight) {
+    return frontendResultsInFlight;
+  }
+
+  const requestPromise = (async () => {
     try {
-      return await fetchFromBackend(force);
+      // Prefer backend first: better latency and centralized protections.
+      const backendResults = await fetchFromBackend(force);
+      frontendResultsCache = {
+        value: backendResults,
+        expiresAt: Date.now() + FRONTEND_RESULTS_TTL_MS,
+      };
+      return backendResults;
     } catch (backendError) {
-      console.warn("Backend API failed in frontend, using MOCK_RESULTS fallback:", backendError);
+      console.warn("Backend API failed in frontend, trying direct official endpoint:", backendError);
+    }
+
+    try {
+      const officialResults = await fetchFromOfficialHome(force);
+      frontendResultsCache = {
+        value: officialResults,
+        expiresAt: Date.now() + FRONTEND_RESULTS_TTL_MS,
+      };
+      return officialResults;
+    } catch (officialError) {
+      console.warn("Official Caixa request failed in frontend, using MOCK_RESULTS fallback:", officialError);
       return MOCK_RESULTS;
+    }
+  })();
+
+  if (!force) {
+    frontendResultsInFlight = requestPromise;
+  }
+
+  try {
+    return await requestPromise;
+  } finally {
+    if (frontendResultsInFlight === requestPromise) {
+      frontendResultsInFlight = null;
     }
   }
 };

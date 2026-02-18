@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { GAMES, MONTH_NAMES } from './constants';
 import { SavedGame, ViewState } from './types';
 import Layout from './components/Layout';
 import { generateRandomNumbers } from './services/lotteryNumberService';
 
-// Import newly refactored views
 import HomeView from './components/HomeView';
-import ResultsView from './components/ResultsView';
-import SavedView from './components/SavedView';
+const ResultsView = lazy(() => import('./components/ResultsView'));
+const SavedView = lazy(() => import('./components/SavedView'));
 
 const generateSavedGameId = (): string => {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
@@ -169,6 +168,20 @@ const App: React.FC = () => {
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  const viewFallback = (
+    <div className="w-full max-w-4xl mx-auto pt-6 md:pt-10">
+      <div className="ticket-cut bg-[color:var(--surface)] border border-[color:var(--border)] backdrop-blur-xl shadow-[0_24px_90px_-72px_var(--shadow)] p-6 md:p-8">
+        <div className="h-7 w-56 bg-black/10 dark:bg-white/10 rounded-2xl" />
+        <div className="mt-3 h-4 w-72 bg-black/10 dark:bg-white/10 rounded-2xl" />
+        <div className="mt-8 grid gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="ticket-cut h-36 bg-black/5 dark:bg-white/5 rounded-3xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
       <Layout currentView={currentView} onNavigate={setCurrentView} isDarkMode={isDarkMode} toggleTheme={toggleTheme}>
       {showDisclaimerModal && (
@@ -225,15 +238,19 @@ const App: React.FC = () => {
       )}
 
       {currentView === 'saved' && (
-        <SavedView 
-          savedGames={savedGames}
-          onDelete={deleteSavedGame}
-          onCopy={copyToClipboard}
-        />
+        <Suspense fallback={viewFallback}>
+          <SavedView 
+            savedGames={savedGames}
+            onDelete={deleteSavedGame}
+            onCopy={copyToClipboard}
+          />
+        </Suspense>
       )}
 
       {currentView === 'results' && (
-        <ResultsView />
+        <Suspense fallback={viewFallback}>
+          <ResultsView />
+        </Suspense>
       )}
 
     </Layout>
