@@ -76,6 +76,19 @@ const HomeView: React.FC<HomeViewProps> = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isGamePickerOpen]);
 
+  useEffect(() => {
+    if (!isGamePickerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+    };
+  }, [isGamePickerOpen]);
+
   const getRangeLabel = (gameId: string) => {
     const game = GAMES.find((g) => g.id === gameId);
     if (!game) return "";
@@ -432,7 +445,14 @@ const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {isGamePickerOpen && (
-        <div className="fixed inset-0 z-[95] bg-black/62 dark:bg-black/78 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-[95] bg-black/55 dark:bg-slate-950/100 flex items-center justify-center p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsGamePickerOpen(false);
+            }
+          }}
+        >
           <div className="ticket-cut w-full max-w-md max-h-[88vh] overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 shadow-[0_40px_120px_-52px_rgba(0,0,0,0.85)] animate-zoom-in">
             <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between">
               <h3 className="font-display text-xl font-black tracking-tight text-[color:var(--ink)]">
