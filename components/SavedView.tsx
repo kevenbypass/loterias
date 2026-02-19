@@ -10,6 +10,44 @@ interface SavedViewProps {
   onCopy: (text: string) => void;
 }
 
+const formatSuperSeteSaved = (numbers: number[], labels: string[]): string => {
+  const grouped = new Map<string, number[]>();
+  labels.forEach((label, idx) => {
+    const number = numbers[idx];
+    if (!grouped.has(label)) grouped.set(label, []);
+    grouped.get(label)?.push(number);
+  });
+
+  return Array.from(grouped.entries())
+    .map(([label, values]) => `${label}: ${values.join(", ")}`)
+    .join(" | ");
+};
+
+const formatSavedGameCopyText = (game: SavedGame) => {
+  const gameDef = GAMES.find((g) => g.id === game.gameId) || GAMES[0];
+
+  let text = `Jogar em ${gameDef.name}: `;
+  if (gameDef.id === "super-sete" && game.numberLabels?.length === game.numbers.length) {
+    text += formatSuperSeteSaved(game.numbers, game.numberLabels);
+  } else {
+    text += game.numbers.join(", ");
+  }
+
+  if (game.specialNumbers && game.specialNumbers.length > 0) {
+    const specialText =
+      gameDef.id === "dia-de-sorte"
+        ? game.specialNumbers.map((n) => MONTH_NAMES[n - 1] || String(n)).join(", ")
+        : game.specialNumbers.join(", ");
+    text += ` + ${specialText}`;
+  }
+
+  if (game.extraString) {
+    text += ` + ${game.extraString}`;
+  }
+
+  return text;
+};
+
 const SavedView: React.FC<SavedViewProps> = ({ savedGames, onDelete, onCopy }) => {
   return (
     <div className="w-full max-w-4xl mx-auto animate-fade-in">
@@ -68,11 +106,21 @@ const SavedView: React.FC<SavedViewProps> = ({ savedGames, onDelete, onCopy }) =
                           <span
                             key={i}
                             className={[
-                              "inline-flex items-center justify-center rounded-[18px] bg-[color:var(--surface-2)] border border-[color:var(--border)] font-mono font-black text-[color:var(--ink)] shadow-[0_12px_40px_-32px_var(--shadow)]",
-                              dense ? "w-8 h-8 text-[11px]" : "w-10 h-10 text-sm",
+                              "inline-flex flex-col items-center justify-center rounded-[18px] bg-[color:var(--surface-2)] border border-[color:var(--border)] font-mono font-black text-[color:var(--ink)] shadow-[0_12px_40px_-32px_var(--shadow)]",
+                              dense ? "w-8 h-8 text-[10px] leading-none" : "w-11 h-11 text-sm leading-none",
                             ].join(" ")}
+                            title={game.numberLabels?.[i] ? `${game.numberLabels[i]}: ${n}` : undefined}
                           >
-                            {n.toString().padStart(2, "0")}
+                            {game.numberLabels?.[i] && (
+                              <span className="text-[8px] font-extrabold text-[color:var(--muted)]">
+                                {game.numberLabels[i]}
+                              </span>
+                            )}
+                            <span>
+                              {gameDef.id === "super-sete" || gameDef.id === "federal"
+                                ? String(n)
+                                : n.toString().padStart(2, "0")}
+                            </span>
                           </span>
                         ))}
 
@@ -108,10 +156,7 @@ const SavedView: React.FC<SavedViewProps> = ({ savedGames, onDelete, onCopy }) =
                       <button
                         type="button"
                         onClick={() => {
-                          let text = `Jogar em ${gameDef.name}: ${game.numbers.join(", ")}`;
-                          if (game.specialNumbers) text += ` + ${game.specialNumbers.join(", ")}`;
-                          if (game.extraString) text += ` + ${game.extraString}`;
-                          onCopy(text);
+                          onCopy(formatSavedGameCopyText(game));
                         }}
                         className="inline-flex items-center justify-center w-11 h-11 rounded-[20px] bg-[color:var(--surface-2)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                         title="Copiar"

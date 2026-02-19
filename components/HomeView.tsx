@@ -11,17 +11,28 @@ import {
   Zap,
   Trophy,
   History,
+  ExternalLink,
 } from "lucide-react";
 import { GAMES, MONTH_NAMES } from "../constants";
 import LotteryBall from "./LotteryBall";
+import GameIcon from "./GameIcon";
 import { sanitizeGameColor } from "../utils/gameColors";
+import {
+  getMainCountConfig,
+  getMainCountLabel,
+  getSpecialCountConfig,
+  getSuperSeteColumnRule,
+} from "../utils/gameConfig";
 
 interface HomeViewProps {
   selectedGameId: string;
   setSelectedGameId: (id: string) => void;
   numCount: number;
   setNumCount: (n: number) => void;
+  specialCount: number;
+  setSpecialCount: (n: number) => void;
   generatedNumbers: number[];
+  generatedNumberLabels: string[];
   specialNumbers: number[];
   extraString?: string;
   isGenerating: boolean;
@@ -35,7 +46,10 @@ const HomeView: React.FC<HomeViewProps> = ({
   setSelectedGameId,
   numCount,
   setNumCount,
+  specialCount,
+  setSpecialCount,
   generatedNumbers,
+  generatedNumberLabels,
   specialNumbers,
   extraString,
   isGenerating,
@@ -50,8 +64,12 @@ const HomeView: React.FC<HomeViewProps> = ({
 
   const selectedGame = GAMES.find((g) => g.id === selectedGameId) || GAMES[0];
   const selectedGameColor = sanitizeGameColor(selectedGame.color);
+  const selectedMainCountConfig = getMainCountConfig(selectedGame);
+  const selectedSpecialCountConfig = getSpecialCountConfig(selectedGame.specialRange);
+  const selectedMainCountLabel = getMainCountLabel(selectedGame);
+
   const filteredGames = GAMES.filter((g) =>
-    g.name.toLowerCase().includes(searchTerm.toLowerCase())
+    g.name.toLowerCase().includes(searchTerm.toLowerCase().trim())
   );
 
   useEffect(() => {
@@ -74,6 +92,18 @@ const HomeView: React.FC<HomeViewProps> = ({
       setTimeout(() => setSearchTerm(""), 250);
     }
   }, [isDropdownOpen]);
+
+  const getRangeLabel = (gameId: string) => {
+    const game = GAMES.find((g) => g.id === gameId);
+    if (!game) return "";
+
+    const config = getMainCountConfig(game);
+    const label = getMainCountLabel(game);
+    if (config.min === config.max) {
+      return `${config.default} ${label}`;
+    }
+    return `${config.min} a ${config.max} ${label}`;
+  };
 
   return (
     <div className="w-full flex flex-col items-center animate-fade-in pb-8">
@@ -102,7 +132,7 @@ const HomeView: React.FC<HomeViewProps> = ({
             </h1>
 
             <p className="mt-4 md:mt-5 text-sm md:text-lg leading-relaxed text-[color:var(--muted)] max-w-2xl mx-auto">
-              Escolha o jogo, selecione as dezenas e gere um bilhete com a energia do trevo.
+              Escolha o jogo, ajuste a quantidade e gere um bilhete no formato da Caixa.
             </p>
           </div>
         </div>
@@ -115,118 +145,223 @@ const HomeView: React.FC<HomeViewProps> = ({
           <div className="ticket-cut relative overflow-hidden backdrop-blur-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_28px_90px_-54px_var(--shadow)]">
             <div className="absolute inset-0 pointer-events-none clover-pattern opacity-[0.10] dark:opacity-[0.07]" />
 
-            <div className="relative px-5 py-5 md:px-7 md:py-6 bg-[color:var(--surface-2)] border-b border-[color:var(--border)] flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-              <div className="relative z-50 w-full md:w-auto" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center justify-between w-full md:w-[320px] gap-3 px-4 py-3 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_14px_50px_-40px_var(--shadow)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className={`inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-${selectedGameColor}-100 dark:bg-${selectedGameColor}-500/20 text-${selectedGameColor}-600 dark:text-${selectedGameColor}-400`}
-                    >
-                      <Clover size={16} />
-                    </span>
-                    <div className="min-w-0 text-left">
-                      <span className="block text-[10px] font-extrabold tracking-widest uppercase text-[color:var(--muted)]">
-                        Jogo
-                      </span>
-                      <span className="block font-black tracking-tight text-[color:var(--ink)] truncate">
-                        {selectedGame.name}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className={`text-[color:var(--muted)] transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-
-                {isDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full md:w-[360px] ticket-cut bg-[color:var(--surface)] backdrop-blur-xl border border-[color:var(--border)] shadow-[0_26px_70px_-44px_var(--shadow)] overflow-hidden z-[100] animate-zoom-in">
-                    <div className="p-3 border-b border-[color:var(--border)] bg-[color:var(--surface-2)]">
-                      <div className="relative">
-                        <Search
-                          size={14}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--muted)]"
-                        />
-                        <input
-                          ref={searchInputRef}
-                          type="text"
-                          placeholder="Filtrar jogo..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full px-3 py-2.5 pl-9 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
-                        />
+            <div className="relative px-5 py-5 md:px-7 md:py-6 bg-[color:var(--surface-2)] border-b border-[color:var(--border)] flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-6">
+                <div className="relative z-50 w-full md:w-auto" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center justify-between w-full md:w-[360px] gap-3 px-4 py-3 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_14px_50px_-40px_var(--shadow)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <GameIcon game={selectedGame} size="md" />
+                      <div className="min-w-0 text-left">
+                        <span className="block text-[10px] font-extrabold tracking-widest uppercase text-[color:var(--muted)]">
+                          Jogo
+                        </span>
+                        <span className="block font-black tracking-tight text-[color:var(--ink)] truncate">
+                          {selectedGame.name}
+                        </span>
                       </div>
                     </div>
+                    <ChevronDown
+                      size={16}
+                      className={`text-[color:var(--muted)] transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
 
-                    <div className="max-h-64 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                      {filteredGames.map((game) => {
-                        const active = selectedGameId === game.id;
-                        const gameColor = sanitizeGameColor(game.color);
-                        return (
-                          <button
-                            key={game.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedGameId(game.id);
-                              setIsDropdownOpen(false);
-                            }}
-                            className={[
-                              "w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-colors",
-                              active
-                                ? "bg-emerald-500/10 text-[color:var(--ink)]"
-                                : "hover:bg-black/5 dark:hover:bg-white/5 text-[color:var(--muted)]",
-                            ].join(" ")}
-                          >
-                            <span
-                              className={`w-2.5 h-2.5 rounded-full ${
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-full md:w-[460px] ticket-cut bg-[color:var(--surface)] backdrop-blur-xl border border-[color:var(--border)] shadow-[0_26px_70px_-44px_var(--shadow)] overflow-hidden z-[100] animate-zoom-in">
+                      <div className="p-3 border-b border-[color:var(--border)] bg-[color:var(--surface-2)]">
+                        <div className="relative">
+                          <Search
+                            size={14}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--muted)]"
+                          />
+                          <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="Filtrar jogo..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-3 py-2.5 pl-9 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                        {filteredGames.length === 0 && (
+                          <div className="px-3 py-4 text-sm text-[color:var(--muted)]">
+                            Nenhum jogo encontrado.
+                          </div>
+                        )}
+
+                        {filteredGames.map((game) => {
+                          const active = selectedGameId === game.id;
+                          return (
+                            <button
+                              key={game.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedGameId(game.id);
+                                setIsDropdownOpen(false);
+                              }}
+                              className={[
+                                "w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-colors border",
                                 active
-                                  ? `bg-${gameColor}-500 shadow-[0_0_14px_currentColor]`
-                                  : "bg-black/15 dark:bg-white/15"
-                              }`}
-                            />
-                            <span className="font-extrabold tracking-tight">{game.name}</span>
-                          </button>
-                        );
-                      })}
+                                  ? "bg-emerald-500/10 border-emerald-500/30 text-[color:var(--ink)]"
+                                  : "border-transparent hover:bg-black/5 dark:hover:bg-white/5 text-[color:var(--muted)]",
+                              ].join(" ")}
+                            >
+                              <GameIcon game={game} size="sm" />
+                              <div className="min-w-0">
+                                <span className="block font-extrabold tracking-tight truncate">{game.name}</span>
+                                <span className="block text-[11px] font-bold tracking-wide opacity-80">
+                                  {getRangeLabel(game.id)}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {!selectedGame.allowRepeats && (
-                <div className="w-full md:flex-1 overflow-x-auto hide-scrollbar">
-                  <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] min-w-max">
-                    {[selectedGame.defaultCount, selectedGame.defaultCount + 1, selectedGame.defaultCount + 2]
-                      .filter((n) => n <= selectedGame.maxCount)
-                      .map((n) => {
-                        const active = numCount === n;
-                        return (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setNumCount(n)}
-                            className={[
-                              "px-4 py-2 rounded-2xl text-xs font-extrabold tracking-wide transition-all",
-                              active
-                                ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_18px_50px_-36px_rgba(16,185,129,0.95)]"
-                                : "text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-black/5 dark:hover:bg-white/5",
-                            ].join(" ")}
-                          >
-                            {n} dezenas
-                          </button>
-                        );
-                      })}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-extrabold tracking-wide text-[color:var(--muted)]">
+                    <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>{selectedGame.selectionHint}</span>
+                    <a
+                      href={selectedGame.officialUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[color:var(--surface)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5 text-[color:var(--ink)]"
+                    >
+                      Regra oficial
+                      <ExternalLink size={12} />
+                    </a>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <div className="hidden md:flex items-center gap-2 text-[11px] font-extrabold tracking-wide text-[color:var(--muted)]">
-                <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
-                <span>Bilhete aleatório, sem IA.</span>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-extrabold tracking-widest uppercase text-[color:var(--muted)]">
+                      Quantidade de {selectedMainCountLabel}
+                    </span>
+                    <span className="text-xs font-black tracking-wide text-[color:var(--ink)]">
+                      {numCount}
+                    </span>
+                  </div>
+
+                  {selectedMainCountConfig.min === selectedMainCountConfig.max ? (
+                    <div className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] text-xs font-extrabold text-[color:var(--muted)]">
+                      Valor fixo: {selectedMainCountConfig.default}
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="range"
+                        min={selectedMainCountConfig.min}
+                        max={selectedMainCountConfig.max}
+                        value={numCount}
+                        onChange={(e) => setNumCount(Number(e.target.value))}
+                        className="mt-2 w-full accent-emerald-600"
+                      />
+                      <div className="mt-2 w-full overflow-x-auto hide-scrollbar">
+                        <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] min-w-max">
+                          {Array.from(
+                            { length: selectedMainCountConfig.max - selectedMainCountConfig.min + 1 },
+                            (_, idx) => selectedMainCountConfig.min + idx
+                          ).map((n) => {
+                            const active = numCount === n;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setNumCount(n)}
+                                className={[
+                                  "px-3 py-2 rounded-2xl text-xs font-extrabold tracking-wide transition-all",
+                                  active
+                                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_18px_50px_-36px_rgba(16,185,129,0.95)]"
+                                    : "text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-black/5 dark:hover:bg-white/5",
+                                ].join(" ")}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {selectedSpecialCountConfig && (
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-extrabold tracking-widest uppercase text-[color:var(--muted)]">
+                        {selectedGame.specialRange?.label}
+                      </span>
+                      <span className="text-xs font-black tracking-wide text-[color:var(--ink)]">
+                        {specialCount}
+                      </span>
+                    </div>
+
+                    {selectedSpecialCountConfig.min === selectedSpecialCountConfig.max ? (
+                      <div className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] text-xs font-extrabold text-[color:var(--muted)]">
+                        Valor fixo: {selectedSpecialCountConfig.default}
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="range"
+                          min={selectedSpecialCountConfig.min}
+                          max={selectedSpecialCountConfig.max}
+                          value={specialCount}
+                          onChange={(e) => setSpecialCount(Number(e.target.value))}
+                          className="mt-2 w-full accent-emerald-600"
+                        />
+                        <div className="mt-2 w-full overflow-x-auto hide-scrollbar">
+                          <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] min-w-max">
+                            {Array.from(
+                              {
+                                length:
+                                  selectedSpecialCountConfig.max - selectedSpecialCountConfig.min + 1,
+                              },
+                              (_, idx) => selectedSpecialCountConfig.min + idx
+                            ).map((n) => {
+                              const active = specialCount === n;
+                              return (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  onClick={() => setSpecialCount(n)}
+                                  className={[
+                                    "px-3 py-2 rounded-2xl text-xs font-extrabold tracking-wide transition-all",
+                                    active
+                                      ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-[0_18px_50px_-36px_rgba(16,185,129,0.95)]"
+                                      : "text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-black/5 dark:hover:bg-white/5",
+                                  ].join(" ")}
+                                >
+                                  {n}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {selectedGame.id === "super-sete" && (
+                  <div className="text-[11px] font-bold tracking-wide text-[color:var(--muted)]">
+                    Regra por coluna: {getSuperSeteColumnRule(numCount)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -246,7 +381,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                     Pronto para girar
                   </h3>
                   <p className="mt-2 text-sm text-[color:var(--muted)] max-w-sm">
-                    Escolha o jogo, ajuste as dezenas e aperte{" "}
+                    Escolha o jogo, ajuste as quantidades e aperte{" "}
                     <span className="font-extrabold text-[color:var(--ink)]">Gerar bilhete</span>.
                   </p>
                 </div>
@@ -259,8 +394,9 @@ const HomeView: React.FC<HomeViewProps> = ({
                       }`}
                     >
                       {generatedNumbers.map((num, idx) => {
-                        const isSuperSete = selectedGame.id === "super-sete";
-                        const label = isSuperSete ? `C${idx + 1}` : undefined;
+                        const label =
+                          generatedNumberLabels[idx] ||
+                          (selectedGame.id === "super-sete" ? `C${idx + 1}` : undefined);
                         const size = selectedGame.id === "lotomania" ? "small" : "normal";
 
                         return (
@@ -371,8 +507,8 @@ const HomeView: React.FC<HomeViewProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
             { label: "Trevo Verde", icon: Clover },
-            { label: "Bilhete rápido", icon: Zap },
-            { label: "Histórico na mão", icon: History },
+            { label: "Bilhete rapido", icon: Zap },
+            { label: "Historico na mao", icon: History },
             { label: "Resultados oficiais", icon: Trophy },
           ].map((item, i) => (
             <div
