@@ -11,6 +11,11 @@ const SIZE_CLASS: Record<NonNullable<GameIconProps["size"]>, string> = {
   md: "w-10 h-10",
 };
 
+const ICON_SIZE_CLASS: Record<NonNullable<GameIconProps["size"]>, string> = {
+  sm: "w-6 h-6",
+  md: "w-7 h-7",
+};
+
 const GameIcon: React.FC<GameIconProps> = ({ game, size = "md" }) => {
   const isSprite = game.icon.type === "sprite";
 
@@ -18,13 +23,15 @@ const GameIcon: React.FC<GameIconProps> = ({ game, size = "md" }) => {
     <span
       aria-hidden="true"
       className={[
-        "inline-flex items-center justify-center rounded-2xl border border-[color:var(--border)]",
-        "bg-white/85 dark:bg-white/10",
+        "inline-flex items-center justify-center rounded-2xl border border-emerald-500/25 dark:border-emerald-400/20",
+        "bg-[linear-gradient(145deg,rgba(16,185,129,0.20),rgba(16,185,129,0.04))]",
+        "dark:bg-[linear-gradient(145deg,rgba(52,211,153,0.16),rgba(16,185,129,0.05))]",
+        "shadow-[0_10px_24px_-18px_rgba(16,185,129,0.8)]",
         SIZE_CLASS[size],
       ].join(" ")}
     >
       <span
-        className="block w-7 h-7 bg-no-repeat bg-center"
+        className={`${ICON_SIZE_CLASS[size]} block bg-no-repeat bg-center`}
         style={
           isSprite
             ? {
