@@ -446,29 +446,36 @@ const HomeView: React.FC<HomeViewProps> = ({
 
       {isGamePickerOpen && (
         <div
-          className="fixed inset-0 z-[95] bg-black/55 dark:bg-slate-950/100 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[95] bg-[color:var(--bg0)] flex items-center justify-center p-4"
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               setIsGamePickerOpen(false);
             }
           }}
         >
-          <div className="ticket-cut w-full max-w-md max-h-[88vh] overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 shadow-[0_40px_120px_-52px_rgba(0,0,0,0.85)] animate-zoom-in">
-            <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between">
-              <h3 className="font-display text-xl font-black tracking-tight text-[color:var(--ink)]">
-                Escolher jogo
-              </h3>
+          <div className="ticket-cut relative w-full max-w-md max-h-[88vh] overflow-hidden backdrop-blur-xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_28px_90px_-54px_var(--shadow)] animate-zoom-in">
+            <div className="absolute inset-0 pointer-events-none clover-pattern opacity-[0.10] dark:opacity-[0.08]" />
+
+            <div className="relative px-4 py-3 bg-[color:var(--surface-2)] border-b border-[color:var(--border)] flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-xl font-black tracking-tight text-[color:var(--ink)]">
+                  Escolher jogo
+                </h3>
+                <p className="text-[11px] font-bold tracking-wide text-[color:var(--muted)]">
+                  Selecione a loteria para gerar seu bilhete.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsGamePickerOpen(false)}
-                className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5 text-[color:var(--muted)] hover:text-[color:var(--ink)]"
                 aria-label="Fechar seletor de jogo"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="max-h-[72vh] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+            <div className="relative max-h-[72vh] overflow-y-auto p-2 space-y-1 custom-scrollbar">
               {GAMES.map((game) => {
                 const active = selectedGameId === game.id;
                 return (
@@ -481,13 +488,17 @@ const HomeView: React.FC<HomeViewProps> = ({
                     }}
                     className={[
                       "w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-colors border",
-                      active ? "bg-emerald-500/15 border-emerald-500/40 text-slate-900 dark:text-white" : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-600 dark:text-slate-300",
+                      active
+                        ? "bg-emerald-500/14 border-emerald-500/35 text-[color:var(--ink)] shadow-[0_14px_40px_-30px_rgba(16,185,129,0.95)]"
+                        : "border-transparent text-[color:var(--muted)] hover:text-[color:var(--ink)] hover:bg-black/5 dark:hover:bg-white/5",
                     ].join(" ")}
                   >
                     <GameIcon game={game} size="sm" />
                     <div className="min-w-0">
-                      <span className="block font-extrabold tracking-tight truncate">{game.name}</span>
-                      <span className="block text-[11px] font-bold tracking-wide opacity-80">
+                      <span className="block font-extrabold tracking-tight text-[color:var(--ink)] truncate">
+                        {game.name}
+                      </span>
+                      <span className="block text-[11px] font-bold tracking-wide text-[color:var(--muted)]">
                         {getRangeLabel(game.id)}
                       </span>
                     </div>
