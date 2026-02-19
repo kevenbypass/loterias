@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ChevronDown,
-  Search,
   Clover,
   Sparkles,
   Copy,
@@ -59,26 +58,12 @@ const HomeView: React.FC<HomeViewProps> = ({
   onSave,
 }) => {
   const [isGamePickerOpen, setIsGamePickerOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedGame = GAMES.find((g) => g.id === selectedGameId) || GAMES[0];
   const selectedGameColor = sanitizeGameColor(selectedGame.color);
   const selectedMainCountConfig = getMainCountConfig(selectedGame);
   const selectedSpecialCountConfig = getSpecialCountConfig(selectedGame.specialRange);
   const selectedMainCountLabel = getMainCountLabel(selectedGame);
-
-  const filteredGames = GAMES.filter((g) =>
-    g.name.toLowerCase().includes(searchTerm.toLowerCase().trim())
-  );
-
-  useEffect(() => {
-    if (isGamePickerOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 100);
-    } else {
-      setTimeout(() => setSearchTerm(""), 250);
-    }
-  }, [isGamePickerOpen]);
 
   useEffect(() => {
     if (!isGamePickerOpen) return;
@@ -447,45 +432,24 @@ const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {isGamePickerOpen && (
-        <div className="fixed inset-0 z-[95] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="ticket-cut w-full max-w-md max-h-[88vh] overflow-hidden bg-[color:var(--surface)] border border-[color:var(--border)] shadow-[0_34px_110px_-62px_var(--shadow)] animate-zoom-in">
-            <div className="px-4 py-3 bg-[color:var(--surface-2)] border-b border-[color:var(--border)] flex items-center justify-between">
+        <div className="fixed inset-0 z-[95] bg-black/62 dark:bg-black/78 flex items-center justify-center p-4">
+          <div className="ticket-cut w-full max-w-md max-h-[88vh] overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 shadow-[0_40px_120px_-52px_rgba(0,0,0,0.85)] animate-zoom-in">
+            <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between">
               <h3 className="font-display text-xl font-black tracking-tight text-[color:var(--ink)]">
                 Escolher jogo
               </h3>
               <button
                 type="button"
                 onClick={() => setIsGamePickerOpen(false)}
-                className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] hover:bg-black/5 dark:hover:bg-white/5"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-700"
                 aria-label="Fechar seletor de jogo"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="p-3 border-b border-[color:var(--border)] bg-[color:var(--surface-2)]">
-              <div className="relative">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--muted)]"
-                />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Filtrar jogo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2.5 pl-9 rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] text-sm text-[color:var(--ink)] placeholder:text-[color:var(--muted)] focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
-                />
-              </div>
-            </div>
-
-            <div className="max-h-[62vh] overflow-y-auto p-2 space-y-1 custom-scrollbar">
-              {filteredGames.length === 0 && (
-                <div className="px-3 py-4 text-sm text-[color:var(--muted)]">Nenhum jogo encontrado.</div>
-              )}
-
-              {filteredGames.map((game) => {
+            <div className="max-h-[72vh] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+              {GAMES.map((game) => {
                 const active = selectedGameId === game.id;
                 return (
                   <button
@@ -497,9 +461,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                     }}
                     className={[
                       "w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-colors border",
-                      active
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-[color:var(--ink)]"
-                        : "border-transparent hover:bg-black/5 dark:hover:bg-white/5 text-[color:var(--muted)]",
+                      active ? "bg-emerald-500/15 border-emerald-500/40 text-slate-900 dark:text-white" : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-600 dark:text-slate-300",
                     ].join(" ")}
                   >
                     <GameIcon game={game} size="sm" />
